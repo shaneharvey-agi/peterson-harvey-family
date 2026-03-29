@@ -9,6 +9,7 @@
 <meta name="theme-color" content="#0a0f1e">
 <title>Peterson — Harvey Family Command Center</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -24,19 +25,17 @@
 }
 html,body{height:100%;overflow:hidden}
 body{background:var(--bg);color:var(--text);font-family:var(--font);display:flex;flex-direction:column}
-
-/* HEADER */
-.header{background:linear-gradient(135deg,#0d1629 0%,#111827 100%);border-bottom:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.header{background:linear-gradient(135deg,#0d1629 0%,#111827 100%);border-bottom:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;flex-shrink:0}
 .logo-name{font-family:var(--font-serif);font-size:18px;color:var(--gold2);letter-spacing:1px;line-height:1}
 .logo-sub{font-size:9px;font-weight:500;letter-spacing:3px;color:var(--text3);text-transform:uppercase;margin-top:2px}
 .clock-time{font-size:24px;font-weight:300;color:var(--text);letter-spacing:2px;line-height:1;text-align:right}
 .clock-date{font-size:10px;color:var(--text2);margin-top:2px;text-align:right}
-
-/* QUOTE */
+.sync-status{font-size:9px;padding:2px 8px;border-radius:10px;font-weight:600;letter-spacing:0.5px}
+.sync-online{background:#0f3020;color:var(--green);border:1px solid var(--green)}
+.sync-offline{background:var(--red-dim);color:var(--red);border:1px solid var(--red)}
+.sync-syncing{background:#2d1f0a;color:#f59e0b;border:1px solid #f59e0b}
 .quote-bar{background:var(--gold-dim);border-bottom:1px solid var(--gold-border);padding:6px 20px;display:flex;align-items:center;gap:8px;flex-shrink:0}
 .quote-text{font-size:11px;color:var(--gold3);font-style:italic;font-family:var(--font-serif);line-height:1.3;flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-
-/* WEATHER */
 .weather-strip{background:var(--surface);border-bottom:1px solid var(--border);padding:8px 16px;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;flex-shrink:0}
 .weather-strip::-webkit-scrollbar{display:none}
 .weather-day{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px 10px;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:62px;flex-shrink:0}
@@ -45,11 +44,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);display:flex
 .wd-icon{font-size:16px}
 .wd-temp{font-size:13px;font-weight:600;color:var(--gold2)}
 .wd-cond{font-size:8px;color:var(--text3);text-align:center}
-
-/* MAIN LAYOUT */
 .main{display:grid;grid-template-columns:1fr 290px;flex:1;overflow:hidden;min-height:0}
-
-/* CALENDAR */
 .calendar-section{padding:14px;border-right:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column;gap:10px}
 .view-tabs{display:flex;gap:3px;background:var(--surface);border-radius:9px;padding:3px;width:fit-content}
 .view-tab{padding:5px 14px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;color:var(--text2);transition:all 0.2s;border:none;background:transparent;font-family:var(--font)}
@@ -58,8 +53,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);display:flex
 .cal-title{font-size:16px;font-weight:500;color:var(--text);font-family:var(--font-serif)}
 .cal-btn{background:var(--surface2);border:1px solid var(--border);color:var(--text2);width:28px;height:28px;border-radius:5px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;transition:all 0.2s}
 .cal-btn:hover{border-color:var(--gold);color:var(--gold)}
-
-/* MONTH */
 .month-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
 .dow{text-align:center;font-size:9px;font-weight:600;color:var(--text3);letter-spacing:1px;padding:4px 0;text-transform:uppercase}
 .day-cell{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:4px;min-height:66px;cursor:pointer;transition:all 0.2s}
@@ -69,8 +62,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);display:flex
 .day-num{font-size:11px;font-weight:600;color:var(--text2);margin-bottom:3px}
 .day-cell.today .day-num{color:var(--gold);font-weight:700}
 .day-event{font-size:8px;border-radius:2px;padding:1px 3px;margin-bottom:1px;color:white;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
-
-/* WEEK */
 .week-grid{display:grid;grid-template-columns:44px repeat(7,1fr);gap:0;border:1px solid var(--border);border-radius:8px;overflow:hidden}
 .week-dow{background:var(--surface);padding:6px 4px;text-align:center;border-bottom:1px solid var(--border);border-right:1px solid var(--border)}
 .week-dow-name{font-size:9px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px}
@@ -85,9 +76,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);display:flex
 .week-slot:hover{background:var(--surface2)}
 .week-event{position:absolute;left:1px;right:1px;border-radius:3px;padding:2px 3px;font-size:9px;color:white;cursor:pointer;z-index:2;overflow:hidden}
 .dinner-week-event{position:absolute;left:1px;right:1px;border-radius:4px;padding:2px 3px;font-size:9px;color:white;cursor:pointer;z-index:2;overflow:hidden;display:flex;align-items:center;gap:2px;background:var(--purple)}
-.dinner-week-emoji{font-size:12px;flex-shrink:0}
-
-/* AGENDA */
 .agenda-day{margin-bottom:12px}
 .agenda-day-header{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;padding:5px 0;border-bottom:1px solid var(--border);margin-bottom:5px}
 .agenda-day-header.today-header{color:var(--gold)}
@@ -97,8 +85,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);display:flex
 .agenda-time{font-size:10px;color:var(--text2);min-width:60px;font-weight:500}
 .agenda-title{font-size:12px;color:var(--text);font-weight:500}
 .agenda-who{font-size:9px;color:var(--text3);margin-top:1px}
-
-/* TODAY */
 .today-top{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:start}
 .today-hero{background:linear-gradient(135deg,#111827,#1a2234);border:1px solid var(--gold-border);border-radius:10px;padding:14px}
 .today-hero-label{font-size:9px;color:var(--gold);font-weight:600;letter-spacing:2px;text-transform:uppercase}
@@ -112,8 +98,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);display:flex
 .dinner-today-img{width:80px;height:64px;border-radius:6px;object-fit:cover;margin:0 auto 5px;display:block}
 .dinner-today-emoji{font-size:28px;margin-bottom:3px}
 .dinner-today-name{font-size:10px;font-weight:600;color:var(--text);line-height:1.3}
-
-/* SIDEBAR */
 .sidebar{background:var(--surface);display:flex;flex-direction:column;overflow-y:auto;min-height:0}
 .sidebar::-webkit-scrollbar{width:3px}
 .sidebar::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
@@ -169,8 +153,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);display:flex
 .qa-input:focus{outline:none;border-color:var(--gold)}
 .qa-btn{background:var(--gold);border:none;border-radius:6px;padding:6px 10px;color:#0a0f1e;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:var(--font)}
 .qa-btn:hover{background:var(--gold2)}
-
-/* MODALS */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.82);display:none;align-items:center;justify-content:center;z-index:200;padding:16px}
 .modal-overlay.open{display:flex}
 .modal-box{background:var(--surface);border:1px solid var(--gold-border);border-radius:14px;padding:20px;width:380px;max-width:100%;max-height:88vh;overflow-y:auto}
@@ -193,7 +175,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);display:flex
 .btn-save:hover{background:var(--gold2)}
 .btn-purple{background:var(--purple);border:none;border-radius:7px;padding:7px 14px;color:white;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font)}
 .btn-purple:hover{background:#6d28d9}
-/* DETAIL */
 .detail-box{background:var(--surface);border:1px solid var(--gold-border);border-radius:14px;padding:20px;width:400px;max-width:100%;max-height:88vh;overflow-y:auto}
 .detail-header{display:flex;align-items:flex-start;gap:10px;margin-bottom:14px}
 .detail-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0;margin-top:4px}
@@ -206,7 +187,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);display:flex
 .detail-notes{background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:10px;margin-bottom:12px;font-size:12px;color:var(--text2);line-height:1.6;white-space:pre-wrap}
 .maps-btn{display:flex;align-items:center;gap:7px;background:var(--blue);border:none;border-radius:7px;padding:9px 14px;color:white;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);width:100%;justify-content:center;margin-bottom:12px;text-decoration:none}
 .maps-btn:hover{background:var(--blue2)}
-/* RECIPE */
 .recipe-photo{width:100%;height:140px;border-radius:8px;object-fit:cover;margin-bottom:12px}
 .recipe-section-title{font-size:10px;font-weight:700;color:var(--purple2);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:7px}
 .ingredient-row{display:flex;align-items:center;gap:7px;padding:5px 7px;background:var(--surface2);border-radius:5px;margin-bottom:2px;cursor:pointer}
@@ -227,21 +207,37 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);display:flex
 .voice-btn{background:var(--surface2);border:1px solid #3d2060;border-radius:7px;padding:6px 12px;color:var(--purple2);font-size:11px;cursor:pointer;font-family:var(--font);display:flex;align-items:center;gap:5px;margin-bottom:7px}
 .voice-btn.recording{background:var(--purple-dim);border-color:var(--purple);animation:pulse 1s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.6}}
-
-/* MOBILE */
+.loading-overlay{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:999;flex-direction:column;gap:12px}
+.loading-spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin 0.8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{font-size:13px;color:var(--text2);font-family:var(--font)}
 @media(max-width:700px){
-  .main{grid-template-columns:1fr;grid-template-rows:1fr auto}
-  .sidebar{max-height:40vh;flex-direction:row;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden}
-  .sidebar-section{min-width:200px;border-right:1px solid var(--border);border-bottom:none}
-  .calendar-section{overflow-y:auto}
-  .today-top{grid-template-columns:1fr auto}
+  .main{grid-template-columns:1fr}
+  .sidebar{max-height:35vh;flex-direction:row;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden}
+  .sidebar-section{min-width:180px;border-right:1px solid var(--border);border-bottom:none;border-left:none!important}
+  .today-hero-day{font-size:18px}
 }
 </style>
 </head>
 <body>
+
+<div class="loading-overlay" id="loading-overlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-text">Connecting to Peterson — Harvey...</div>
+</div>
+
 <div class="header">
-  <div><div class="logo-name">Peterson — Harvey</div><div class="logo-sub">Family Command Center</div></div>
-  <div><div class="clock-time" id="clock">--:--:--</div><div class="clock-date" id="clock-date"></div></div>
+  <div>
+    <div class="logo-name">Peterson — Harvey</div>
+    <div class="logo-sub">Family Command Center</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px">
+    <span class="sync-status sync-syncing" id="sync-status">Connecting...</span>
+    <div>
+      <div class="clock-time" id="clock">--:--:--</div>
+      <div class="clock-date" id="clock-date"></div>
+    </div>
+  </div>
 </div>
 <div class="quote-bar"><span style="color:var(--gold);font-size:12px;flex-shrink:0">✦</span><div class="quote-text" id="daily-quote"></div></div>
 <div class="weather-strip" id="weather-strip"></div>
@@ -285,7 +281,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);display:flex
       <div id="priorities-list"></div>
     </div>
     <div class="sidebar-section gold-section">
-      <div class="sidebar-title">To-Do <button class="sidebar-add" onclick="document.getElementById('todo-input').focus()">+</button></div>
+      <div class="sidebar-title">To-Do <button class="sidebar-add" onclick="focusInput('todo-input')">+</button></div>
       <div class="todo-list" id="todo-list"></div>
       <div class="quick-add">
         <input class="qa-input" id="todo-input" placeholder="Add task..." onkeydown="if(event.key==='Enter')saveTodo()">
@@ -297,7 +293,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);display:flex
       <div class="dinner-week-list" id="dinner-week-list"></div>
     </div>
     <div class="sidebar-section gold-section">
-      <div class="sidebar-title">Shopping <button class="sidebar-add" onclick="document.getElementById('shop-input').focus()">+</button></div>
+      <div class="sidebar-title">Shopping <button class="sidebar-add" onclick="focusInput('shop-input')">+</button></div>
       <div class="shop-list" id="shop-list"></div>
       <div class="quick-add">
         <input class="qa-input" id="shop-input" placeholder="Add item..." onkeydown="if(event.key==='Enter')saveShop()">
@@ -331,7 +327,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);display:flex
     <div class="detail-meta" id="detail-meta"></div>
     <div class="detail-notes" id="detail-notes" style="display:none"></div>
     <a class="maps-btn" id="maps-btn" href="#" target="_blank" style="display:none">&#9655; Open in Google Maps</a>
-    <div class="detail-actions" style="display:flex;gap:7px;justify-content:space-between">
+    <div style="display:flex;gap:7px;justify-content:space-between">
       <button class="btn-delete" onclick="deleteDetailEvent()">Delete</button>
       <div style="display:flex;gap:7px"><button class="btn-cancel" onclick="closeDetailModal()">Close</button><button class="btn-save" onclick="editFromDetail()">Edit</button></div>
     </div>
@@ -350,15 +346,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);display:flex
 <!-- DINNER DETAIL -->
 <div class="modal-overlay" id="dinner-detail-modal">
   <div class="modal-box-wide" id="dinner-detail-content"></div>
-</div>
-
-<!-- RECIPE LIBRARY -->
-<div class="modal-overlay" id="recipe-modal">
-  <div class="modal-box-wide">
-    <div class="modal-title-purple">Recipe Library</div>
-    <div id="recipe-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;max-height:50vh;overflow-y:auto"></div>
-    <div style="display:flex;gap:7px;justify-content:space-between"><button class="btn-purple" onclick="openNewRecipe()">+ New Recipe</button><button class="btn-cancel" onclick="closeRecipeModal()">Close</button></div>
-  </div>
 </div>
 
 <!-- NEW/EDIT RECIPE -->
@@ -390,44 +377,288 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);display:flex
 </div>
 
 <script>
+const SUPABASE_URL='https://tjbsdlwfetrbjbhfuaht.supabase.co';
+const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRqYnNkbHdmZXRyYmpiaGZ1YWh0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3OTg0MzEsImV4cCI6MjA5MDM3NDQzMX0.7Py48cubJ9ZB6kf7pfe7Lusg4G412yb2kQvQmfLIuoc';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+
 const COLORS={shane:'#3b82f6',molly:'#c084fc',evey:'#f472b6',jax:'#34d399',family:'#c9a84c'};
 const WD=[{i:'☀️',t:52,c:'Clear'},{i:'⛅',t:49,c:'Partly Cloudy'},{i:'🌦️',t:55,c:'Showers'},{i:'🌧️',t:47,c:'Rainy'},{i:'☀️',t:58,c:'Sunny'},{i:'⛅',t:61,c:'Partly Cloudy'},{i:'🌤️',t:54,c:'Mostly Sunny'}];
 const DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const QUOTES=["Trust in the Lord with all your heart and lean not on your own understanding. — Proverbs 3:5","Whatever you do, work at it with all your heart, as working for the Lord. — Colossians 3:23","I can do all things through Christ who strengthens me. — Philippians 4:13","Be strong and courageous. Do not be afraid. — Joshua 1:9","For I know the plans I have for you, plans to prosper you. — Jeremiah 29:11","The secret of getting ahead is getting started. — Mark Twain","Do the hard things first. The easy things take care of themselves."];
+
 let now=new Date(),viewDate=new Date(now),currentView='today',editingId=null,detailId=null,editingRecipeId=null,currentDinnerDate=null,tempDinnerPlan={};
 let voiceRecognition=null,isRecording=false;
+let events=[],todos=[],shopping=[],priorities=[],weeklys=[],recipes=[],dinnerPlan={},pantry={};
+
 function fmtDate(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
 function parseDate(s){const[y,m,d]=s.split('-');return new Date(+y,+m-1,+d)}
 function fmtTime(t){if(!t)return '';const[h,m]=t.split(':');const hr=+h;return(hr%12||12)+':'+(m||'00')+(hr<12?'am':'pm')}
 function fmtDateLong(s){return parseDate(s).toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'})}
-function ld(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}}
-function sd(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
 function getWeekDates(){const d=[];const s=new Date(now);s.setDate(now.getDate()-now.getDay());for(let i=0;i<7;i++){const x=new Date(s);x.setDate(s.getDate()+i);d.push(fmtDate(x))}return d}
+function setSyncStatus(s){const el=document.getElementById('sync-status');el.className='sync-status sync-'+s;el.textContent=s==='online'?'● Live':s==='syncing'?'↻ Syncing...':'○ Offline'}
+function focusInput(id){document.getElementById(id).focus()}
 
-let events=ld('phfc_v5_events',[
-  {id:1,title:'Molly — Pokemon Company',date:fmtDate(new Date(now.getFullYear(),now.getMonth(),now.getDate())),time:'09:00',who:'molly',address:'',notes:''},
-  {id:2,title:'Focus Block (Protected)',date:fmtDate(new Date(now.getFullYear(),now.getMonth(),now.getDate())),time:'10:00',who:'shane',address:'',notes:'No interruptions. Deep work only.'},
-  {id:3,title:'Venice — Depart',date:fmtDate(new Date(now.getFullYear(),now.getMonth(),now.getDate()+3)),time:'07:00',who:'family',address:'Seattle-Tacoma International Airport, Seattle WA',notes:'Flight: AA1234\nArrive 2 hours early'},
-  {id:4,title:'Jax — Soccer',date:fmtDate(new Date(now.getFullYear(),now.getMonth(),now.getDate()+1)),time:'15:30',who:'jax',address:'Lake Stevens Sports Complex, Lake Stevens WA',notes:'Bring shin guards'},
-  {id:5,title:'Paradiso Perduto',date:fmtDate(new Date(now.getFullYear(),now.getMonth(),now.getDate()+6)),time:'19:00',who:'family',address:'Fondamenta della Misericordia, 2540, 30121 Venice VE, Italy',notes:'Phone: +39 041 720 581\nReservation under Harvey — party of 2\nCall before noon to confirm\nCash preferred'},
-  {id:6,title:'Evey — Snuggle Group',date:fmtDate(new Date(now.getFullYear(),now.getMonth(),now.getDate()+2)),time:'10:00',who:'evey',address:'',notes:''},
-]);
-let recipes=ld('phfc_recipes',[
-  {id:1,name:'Chicken Stir Fry',type:'homecook',photo:'',emoji:'🍜',ingredients:['2 lbs chicken breast','2 cups broccoli','1 cup snap peas','3 tbsp soy sauce','2 tbsp sesame oil','4 cloves garlic','2 cups rice'],instructions:'1. Cook rice.\n2. Slice chicken, season.\n3. Heat oil in wok, cook chicken 5-6 min.\n4. Add garlic, vegetables, stir fry 3-4 min.\n5. Add soy sauce, serve over rice.',phone:'',menu:'',opentable:''},
-  {id:2,name:'Taco Tuesday',type:'homecook',photo:'',emoji:'🌮',ingredients:['1.5 lbs ground beef','1 taco seasoning packet','12 taco shells','Shredded cheese','Sour cream','2 tomatoes','Lettuce','Salsa'],instructions:'1. Brown beef, drain fat.\n2. Add seasoning + water per packet, simmer 5 min.\n3. Warm shells.\n4. Set up toppings bar and build.',phone:'',menu:'',opentable:''},
-  {id:3,name:"Zeeks Pizza Night",type:'restaurant',photo:'',emoji:'🍕',ingredients:[],instructions:'',phone:'+1 (425) 555-0199',menu:'https://www.zeekspizza.com/menu',opentable:''},
-  {id:4,name:'Salmon & Veggies',type:'homecook',photo:'',emoji:'🐟',ingredients:['4 salmon fillets','2 tbsp olive oil','1 lemon','2 cups asparagus','Salt & pepper','Fresh dill'],instructions:'1. Preheat oven 400°F.\n2. Season salmon with oil, salt, pepper, lemon.\n3. Add asparagus, bake 12-15 min.',phone:'',menu:'',opentable:''},
-]);
-let dinnerPlan=ld('phfc_dinner_plan',{});
-let pantry=ld('phfc_pantry',{});
-let todos=ld('phfc_todos',[{id:1,text:'Review Boujie NW listing',done:false,cat:'business'},{id:2,text:'Venice restaurant call',done:false,cat:'personal'},{id:3,text:'Evey dentist — schedule',done:false,cat:'family'},{id:4,text:'Claude cert module',done:false,cat:'business'}]);
-let shopping=ld('phfc_shop',[{id:1,text:'Coffee — Café Verona',done:false,cat:'Groceries'},{id:2,text:'Eggs',done:false,cat:'Groceries'},{id:3,text:'Chicken breast',done:false,cat:'Groceries'},{id:4,text:'Protein powder',done:false,cat:'Health'}]);
-let priorities=ld('phfc_priorities',[{id:1,text:'10am–12pm focus block',done:false},{id:2,text:'Venice call before noon',done:false},{id:3,text:'Cowork session review',done:false}]);
-let weeklys=ld('phfc_weekly',[{id:1,text:'Finish Life OS PA build',done:false},{id:2,text:'Boujie NW — Q2 rates',done:false},{id:3,text:'Family Venice prep',done:false}]);
+// ── SUPABASE INIT ──
+async function initDB(){
+  try{
+    setSyncStatus('syncing');
+    // Create tables if they don't exist via RPC or just load data
+    await Promise.all([loadEvents(),loadTodos(),loadShopping(),loadPriorities(),loadWeeklys(),loadRecipes(),loadDinnerPlan(),loadPantry()]);
+    setSyncStatus('online');
+    document.getElementById('loading-overlay').style.display='none';
+    renderCal();
+    subscribeToChanges();
+  }catch(e){
+    console.error('DB init error:',e);
+    setSyncStatus('offline');
+    document.getElementById('loading-overlay').style.display='none';
+    loadFallbackData();
+    renderCal();
+  }
+}
 
-function updateClock(){const n=new Date();document.getElementById('clock').textContent=n.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'});document.getElementById('clock-date').textContent=n.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'})}
-function buildWeather(){const s=document.getElementById('weather-strip');s.innerHTML='';for(let i=0;i<7;i++){const d=new Date(now);d.setDate(now.getDate()+i);const w=WD[i];const div=document.createElement('div');div.className='weather-day'+(i===0?' today':'');div.innerHTML=`<div class="wd-name">${i===0?'Today':DAYS[d.getDay()]}</div><div class="wd-icon">${w.i}</div><div class="wd-temp">${w.t}°</div><div class="wd-cond">${w.c}</div>`;s.appendChild(div)}}
-function setDailyQuote(){document.getElementById('daily-quote').textContent=QUOTES[now.getDay()%QUOTES.length]}
+async function loadEvents(){
+  const{data,error}=await sb.from('events').select('*').order('date',{ascending:true});
+  if(error)throw error;
+  events=data||[];
+  if(events.length===0)await seedEvents();
+}
+async function loadTodos(){
+  const{data,error}=await sb.from('todos').select('*').order('created_at',{ascending:true});
+  if(error)throw error;
+  todos=data||[];
+  if(todos.length===0)await seedTodos();
+}
+async function loadShopping(){
+  const{data,error}=await sb.from('shopping').select('*').order('created_at',{ascending:true});
+  if(error)throw error;
+  shopping=data||[];
+  if(shopping.length===0)await seedShopping();
+}
+async function loadPriorities(){
+  const{data,error}=await sb.from('priorities').select('*').order('sort_order',{ascending:true});
+  if(error)throw error;
+  priorities=data||[];
+  if(priorities.length===0)await seedPriorities();
+}
+async function loadWeeklys(){
+  const{data,error}=await sb.from('weeklys').select('*').order('sort_order',{ascending:true});
+  if(error)throw error;
+  weeklys=data||[];
+  if(weeklys.length===0)await seedWeeklys();
+}
+async function loadRecipes(){
+  const{data,error}=await sb.from('recipes').select('*').order('name',{ascending:true});
+  if(error)throw error;
+  recipes=data||[];
+  if(recipes.length===0)await seedRecipes();
+}
+async function loadDinnerPlan(){
+  const{data,error}=await sb.from('dinner_plan').select('*');
+  if(error)throw error;
+  dinnerPlan={};
+  (data||[]).forEach(r=>{dinnerPlan[r.date]=r.recipe_id});
+}
+async function loadPantry(){
+  const{data,error}=await sb.from('pantry').select('*');
+  if(error)throw error;
+  pantry={};
+  (data||[]).forEach(r=>{if(!pantry[r.recipe_id])pantry[r.recipe_id]={};pantry[r.recipe_id][r.ingredient_index]=r.have});
+}
+
+// ── SEED DATA ──
+async function seedEvents(){
+  const seed=[
+    {title:'Molly — Pokemon Company',date:fmtDate(new Date(now.getFullYear(),now.getMonth(),now.getDate())),time:'09:00',who:'molly',address:'',notes:''},
+    {title:'Focus Block (Protected)',date:fmtDate(new Date(now.getFullYear(),now.getMonth(),now.getDate())),time:'10:00',who:'shane',address:'',notes:'No interruptions. Deep work only.'},
+    {title:'Venice — Depart',date:fmtDate(new Date(now.getFullYear(),now.getMonth(),now.getDate()+3)),time:'07:00',who:'family',address:'Seattle-Tacoma International Airport, Seattle WA',notes:'Flight: AA1234\nArrive 2 hours early'},
+    {title:'Jax — Soccer',date:fmtDate(new Date(now.getFullYear(),now.getMonth(),now.getDate()+1)),time:'15:30',who:'jax',address:'Lake Stevens Sports Complex, Lake Stevens WA',notes:'Bring shin guards'},
+    {title:'Paradiso Perduto',date:fmtDate(new Date(now.getFullYear(),now.getMonth(),now.getDate()+6)),time:'19:00',who:'family',address:'Fondamenta della Misericordia, 2540, 30121 Venice VE, Italy',notes:'Phone: +39 041 720 581\nReservation under Harvey — party of 2\nCash preferred'},
+    {title:'Evey — Snuggle Group',date:fmtDate(new Date(now.getFullYear(),now.getMonth(),now.getDate()+2)),time:'10:00',who:'evey',address:'',notes:''},
+  ];
+  const{data}=await sb.from('events').insert(seed).select();
+  if(data)events=data;
+}
+async function seedTodos(){
+  const seed=[
+    {text:'Review Boujie NW listing',done:false,cat:'business'},
+    {text:'Venice restaurant call',done:false,cat:'personal'},
+    {text:'Evey dentist — schedule',done:false,cat:'family'},
+    {text:'Claude cert module',done:false,cat:'business'},
+  ];
+  const{data}=await sb.from('todos').insert(seed).select();
+  if(data)todos=data;
+}
+async function seedShopping(){
+  const seed=[
+    {text:'Coffee — Café Verona',done:false,cat:'Groceries'},
+    {text:'Eggs',done:false,cat:'Groceries'},
+    {text:'Chicken breast',done:false,cat:'Groceries'},
+    {text:'Protein powder',done:false,cat:'Health'},
+  ];
+  const{data}=await sb.from('shopping').insert(seed).select();
+  if(data)shopping=data;
+}
+async function seedPriorities(){
+  const seed=[
+    {text:'10am–12pm focus block',done:false,sort_order:1},
+    {text:'Venice call before noon',done:false,sort_order:2},
+    {text:'Cowork session review',done:false,sort_order:3},
+  ];
+  const{data}=await sb.from('priorities').insert(seed).select();
+  if(data)priorities=data;
+}
+async function seedWeeklys(){
+  const seed=[
+    {text:'Finish Life OS PA build',done:false,sort_order:1},
+    {text:'Boujie NW — Q2 rates',done:false,sort_order:2},
+    {text:'Family Venice prep',done:false,sort_order:3},
+  ];
+  const{data}=await sb.from('weeklys').insert(seed).select();
+  if(data)weeklys=data;
+}
+async function seedRecipes(){
+  const seed=[
+    {name:'Chicken Stir Fry',type:'homecook',photo:'',emoji:'🍜',ingredients:['2 lbs chicken breast','2 cups broccoli','1 cup snap peas','3 tbsp soy sauce','2 tbsp sesame oil','4 cloves garlic','2 cups rice'],instructions:'1. Cook rice.\n2. Slice chicken, season.\n3. Heat oil in wok, cook chicken 5-6 min.\n4. Add garlic, vegetables, stir fry 3-4 min.\n5. Add soy sauce, serve over rice.',phone:'',menu:'',opentable:''},
+    {name:'Taco Tuesday',type:'homecook',photo:'',emoji:'🌮',ingredients:['1.5 lbs ground beef','1 taco seasoning packet','12 taco shells','Shredded cheese','Sour cream','2 tomatoes','Lettuce','Salsa'],instructions:'1. Brown beef, drain fat.\n2. Add seasoning + water, simmer 5 min.\n3. Warm shells.\n4. Build tacos.',phone:'',menu:'',opentable:''},
+    {name:'Zeeks Pizza Night',type:'restaurant',photo:'',emoji:'🍕',ingredients:[],instructions:'',phone:'+1 (425) 555-0199',menu:'https://www.zeekspizza.com/menu',opentable:''},
+    {name:'Salmon & Veggies',type:'homecook',photo:'',emoji:'🐟',ingredients:['4 salmon fillets','2 tbsp olive oil','1 lemon','2 cups asparagus','Salt & pepper','Fresh dill'],instructions:'1. Preheat oven 400°F.\n2. Season salmon, add asparagus.\n3. Bake 12-15 min.',phone:'',menu:'',opentable:''},
+  ];
+  const{data}=await sb.from('recipes').insert(seed).select();
+  if(data)recipes=data;
+}
+
+// ── REALTIME SUBSCRIPTIONS ──
+function subscribeToChanges(){
+  sb.channel('phfc-changes')
+    .on('postgres_changes',{event:'*',schema:'public',table:'events'},()=>{loadEvents().then(renderCal)})
+    .on('postgres_changes',{event:'*',schema:'public',table:'todos'},()=>{loadTodos().then(renderTodos)})
+    .on('postgres_changes',{event:'*',schema:'public',table:'shopping'},()=>{loadShopping().then(renderShop)})
+    .on('postgres_changes',{event:'*',schema:'public',table:'priorities'},()=>{loadPriorities().then(renderPriorities)})
+    .on('postgres_changes',{event:'*',schema:'public',table:'weeklys'},()=>{loadWeeklys().then(renderWeeklys)})
+    .on('postgres_changes',{event:'*',schema:'public',table:'dinner_plan'},()=>{loadDinnerPlan().then(renderDinnerSidebar)})
+    .on('postgres_changes',{event:'*',schema:'public',table:'recipes'},()=>{loadRecipes().then(renderDinnerSidebar)})
+    .subscribe(status=>{
+      if(status==='SUBSCRIBED')setSyncStatus('online');
+      if(status==='CLOSED'||status==='CHANNEL_ERROR')setSyncStatus('offline');
+    });
+}
+
+// ── FALLBACK (offline) ──
+function loadFallbackData(){
+  events=[{id:1,title:'Focus Block',date:fmtDate(now),time:'10:00',who:'shane',address:'',notes:''}];
+  todos=[{id:1,text:'Connect to internet for full sync',done:false,cat:'personal'}];
+  shopping=[];priorities=[];weeklys=[];recipes=[];dinnerPlan={};pantry={};
+}
+
+// ── CRUD OPERATIONS ──
+async function saveEvent(){
+  const t=document.getElementById('ev-title').value.trim();if(!t)return;
+  setSyncStatus('syncing');
+  const ev={title:t,date:document.getElementById('ev-date').value,time:document.getElementById('ev-time').value,who:document.getElementById('ev-who').value,address:document.getElementById('ev-address').value.trim(),notes:document.getElementById('ev-notes').value.trim()};
+  if(editingId){
+    await sb.from('events').update(ev).eq('id',editingId);
+  }else{
+    await sb.from('events').insert(ev);
+  }
+  await loadEvents();setSyncStatus('online');closeAddModal();renderCal();
+}
+async function deleteEditingEvent(){if(!confirm('Delete?'))return;await sb.from('events').delete().eq('id',editingId);await loadEvents();closeAddModal();renderCal()}
+async function deleteDetailEvent(){if(!confirm('Delete?'))return;await sb.from('events').delete().eq('id',detailId);await loadEvents();closeDetailModal();renderCal()}
+
+async function saveTodo(){
+  const inp=document.getElementById('todo-input');if(!inp.value.trim())return;
+  await sb.from('todos').insert({text:inp.value.trim(),done:false,cat:'personal'});
+  await loadTodos();inp.value='';renderTodos();
+}
+async function toggleTodo(id,done){
+  await sb.from('todos').update({done:!done}).eq('id',id);
+  await loadTodos();renderTodos();
+}
+
+async function saveShop(){
+  const inp=document.getElementById('shop-input');if(!inp.value.trim())return;
+  await sb.from('shopping').insert({text:inp.value.trim(),done:false,cat:'Groceries'});
+  await loadShopping();inp.value='';renderShop();
+}
+async function toggleShop(id,done){
+  await sb.from('shopping').update({done:!done}).eq('id',id);
+  await loadShopping();renderShop();
+}
+
+async function togglePriority(id,done){
+  await sb.from('priorities').update({done:!done}).eq('id',id);
+  await loadPriorities();renderPriorities();
+}
+async function addPriority(){
+  const t=prompt('New daily priority:');if(!t)return;
+  const maxOrder=priorities.reduce((m,p)=>Math.max(m,p.sort_order||0),0);
+  await sb.from('priorities').insert({text:t,done:false,sort_order:maxOrder+1});
+  await loadPriorities();renderPriorities();
+}
+
+async function toggleWeekly(id,done){
+  await sb.from('weeklys').update({done:!done}).eq('id',id);
+  await loadWeeklys();renderWeeklys();
+}
+async function addWeekly(){
+  const t=prompt('New weekly goal:');if(!t)return;
+  const maxOrder=weeklys.reduce((m,w)=>Math.max(m,w.sort_order||0),0);
+  await sb.from('weeklys').insert({text:t,done:false,sort_order:maxOrder+1});
+  await loadWeeklys();renderWeeklys();
+}
+
+async function saveDinnerPlan(){
+  const wd=getWeekDates();
+  for(const ds of wd){
+    const rid=tempDinnerPlan[ds];
+    const existing=await sb.from('dinner_plan').select('id').eq('date',ds).single();
+    if(existing.data){
+      if(rid){await sb.from('dinner_plan').update({recipe_id:rid}).eq('date',ds)}
+      else{await sb.from('dinner_plan').delete().eq('date',ds)}
+    }else if(rid){
+      await sb.from('dinner_plan').insert({date:ds,recipe_id:rid});
+    }
+  }
+  await loadDinnerPlan();closeDinnerPlanner();renderCal();
+}
+
+async function saveRecipe(){
+  const name=document.getElementById('rec-name').value.trim();if(!name)return;
+  const photo=document.getElementById('rec-photo-preview').style.display!=='none'?document.getElementById('rec-photo-img').src:'';
+  const r={name,type:document.getElementById('rec-type').value,photo,emoji:photo?'':'🍽️',ingredients:document.getElementById('rec-ingredients').value.split('\n').map(s=>s.trim()).filter(Boolean),instructions:document.getElementById('rec-instructions').value.trim(),phone:document.getElementById('rec-phone').value.trim(),menu:document.getElementById('rec-menu').value.trim(),opentable:document.getElementById('rec-opentable').value.trim()};
+  if(editingRecipeId){await sb.from('recipes').update(r).eq('id',editingRecipeId)}
+  else{await sb.from('recipes').insert(r)}
+  await loadRecipes();closeNewRecipe();renderDinnerSidebar();renderCal();
+}
+async function deleteRecipe(){
+  if(!confirm('Delete recipe?'))return;
+  await sb.from('recipes').delete().eq('id',editingRecipeId);
+  await loadRecipes();closeNewRecipe();renderDinnerSidebar();renderCal();
+}
+
+async function togglePantry(recipeId,idx){
+  const current=pantry[recipeId]?.[idx]||false;
+  const existing=await sb.from('pantry').select('id').eq('recipe_id',recipeId).eq('ingredient_index',idx).single();
+  if(existing.data){await sb.from('pantry').update({have:!current}).eq('id',existing.data.id)}
+  else{await sb.from('pantry').insert({recipe_id:recipeId,ingredient_index:idx,have:true})}
+  await loadPantry();
+  const r=recipes.find(x=>x.id===recipeId);
+  if(r){const dl=parseDate(currentDinnerDate).toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});renderRecipeDetail(r,dl);}
+}
+
+async function addMissingToShopping(recipeId){
+  const r=recipes.find(x=>x.id===recipeId);if(!r)return;
+  if(!pantry[recipeId])pantry[recipeId]={};
+  const missing=r.ingredients.filter((_,i)=>!pantry[recipeId][i]);
+  for(const ing of missing){
+    if(!shopping.find(s=>s.text.toLowerCase()===ing.toLowerCase()))
+      await sb.from('shopping').insert({text:ing,done:false,cat:'Groceries'});
+  }
+  await loadShopping();renderShop();alert(`Added ${missing.length} item(s) to shopping list!`);
+}
+
+// ── DINNER HELPERS ──
 function getDinnerForDate(ds){const rid=dinnerPlan[ds];return rid?recipes.find(r=>r.id===rid)||null:null}
 function getTodayDinner(){return getDinnerForDate(fmtDate(now))}
 function dinnerThumb(r,big){return r.photo?`<img src="${r.photo}" class="${big?'dinner-today-img':'dinner-day-thumb'}">`:`<div class="${big?'dinner-today-emoji':'dinner-day-emoji'}">${r.emoji||'🍽️'}</div>`}
@@ -451,7 +682,6 @@ function openDinnerPlanner(){
   document.getElementById('dinner-planner-modal').classList.add('open');
 }
 function closeDinnerPlanner(){document.getElementById('dinner-planner-modal').classList.remove('open')}
-function saveDinnerPlan(){dinnerPlan={...tempDinnerPlan};sd('phfc_dinner_plan',dinnerPlan);closeDinnerPlanner();renderCal()}
 
 function openDinnerDetail(ds){
   currentDinnerDate=ds;
@@ -462,7 +692,7 @@ function openDinnerDetail(ds){
 }
 function renderRecipeDetail(r,dl){
   if(!pantry[r.id])pantry[r.id]={};
-  const ing=r.ingredients||[];const haveCount=ing.filter((_,i)=>pantry[r.id][i]).length;const missing=ing.filter((_,i)=>!pantry[r.id][i]);
+  const ing=r.ingredients||[];const missing=ing.filter((_,i)=>!pantry[r.id][i]);
   const pantryHtml=ing.length?`<div class="${missing.length===0?'pantry-summary':'pantry-missing'}">${missing.length===0?'✓ You have everything!':'Missing: '+missing.join(', ')}</div>`:'';
   const addBtn=missing.length>0?`<button class="btn-purple" onclick="addMissingToShopping(${r.id})" style="width:100%;margin-bottom:10px;padding:7px">+ Add missing to shopping</button>`:'';
   document.getElementById('dinner-detail-content').innerHTML=`<div class="modal-title-purple">${r.emoji||'🍽️'} ${r.name}</div><div style="font-size:10px;color:var(--purple2);margin-bottom:10px">${dl} · 5:00pm</div>${r.photo?`<img src="${r.photo}" class="recipe-photo">`:''}${pantryHtml}${addBtn}<div class="recipe-section-title">Ingredients — Pantry Check</div><div style="margin-bottom:12px">${ing.map((x,i)=>`<div class="ingredient-row${pantry[r.id][i]?' have':''}" onclick="togglePantry(${r.id},${i})"><div class="ingr-check">${pantry[r.id][i]?'✓':''}</div><div class="ingr-text">${x}</div></div>`).join('')||'<div style="color:var(--text3);font-size:11px">No ingredients.</div>'}</div><div class="recipe-section-title">Instructions</div><div style="font-size:12px;color:var(--text2);line-height:1.7;white-space:pre-wrap;margin-bottom:14px">${r.instructions||'No instructions yet.'}</div><div style="display:flex;gap:7px;justify-content:space-between"><button class="btn-delete" onclick="closeDinnerDetail();openEditRecipe(${r.id})">Edit Recipe</button><button class="btn-cancel" onclick="closeDinnerDetail()">Close</button></div>`;
@@ -472,23 +702,17 @@ function renderRestaurantDetail(r,dl){
   document.getElementById('dinner-detail-content').innerHTML=`<div class="modal-title-purple">${r.emoji||'🍽️'} ${r.name}</div><div style="font-size:10px;color:var(--purple2);margin-bottom:12px">${dl} · Restaurant Night</div>${r.photo?`<img src="${r.photo}" class="recipe-photo">`:''}${r.phone?`<a class="rest-action-btn btn-call" href="tel:${r.phone.replace(/\s/g,'')}">📞 Call ${r.phone}</a>`:''}${r.menu?`<a class="rest-action-btn btn-menu" href="${r.menu}" target="_blank">🍽️ View Menu</a>`:''}${r.opentable?`<a class="rest-action-btn btn-opentable" href="${r.opentable}" target="_blank">📅 Book on OpenTable</a>`:''}${!r.phone&&!r.menu&&!r.opentable?'<div style="color:var(--text3);font-size:11px;margin-bottom:10px">No contact info added.</div>':''}<div style="display:flex;gap:7px;justify-content:space-between"><button class="btn-delete" onclick="closeDinnerDetail();openEditRecipe(${r.id})">Edit</button><button class="btn-cancel" onclick="closeDinnerDetail()">Close</button></div>`;
   document.getElementById('dinner-detail-modal').classList.add('open');
 }
-function closeDinnerDetail(){document.getElementById('dinner-detail-modal').classList.remove('open');sd('phfc_pantry',pantry);renderDinnerSidebar()}
-function togglePantry(rid,idx){if(!pantry[rid])pantry[rid]={};pantry[rid][idx]=!pantry[rid][idx];const r=recipes.find(x=>x.id===rid);if(r){const dl=parseDate(currentDinnerDate).toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});renderRecipeDetail(r,dl)}}
-function addMissingToShopping(rid){const r=recipes.find(x=>x.id===rid);if(!r)return;if(!pantry[rid])pantry[rid]={};const missing=r.ingredients.filter((_,i)=>!pantry[rid][i]);missing.forEach(ing=>{if(!shopping.find(s=>s.text.toLowerCase()===ing.toLowerCase()))shopping.push({id:Date.now()+Math.random(),text:ing,done:false,cat:'Groceries'})});sd('phfc_shop',shopping);renderShop();alert(`Added ${missing.length} item(s) to shopping list!`)}
+function closeDinnerDetail(){document.getElementById('dinner-detail-modal').classList.remove('open')}
 
-function openRecipeModal(){document.getElementById('recipe-modal').classList.add('open');renderRecipeGrid()}
-function closeRecipeModal(){document.getElementById('recipe-modal').classList.remove('open')}
-function renderRecipeGrid(){document.getElementById('recipe-grid').innerHTML=recipes.map(r=>`<div onclick="openEditRecipe(${r.id})" style="background:var(--surface2);border:1px solid #3d2060;border-radius:8px;padding:8px;cursor:pointer">${r.photo?`<img src="${r.photo}" style="width:100%;height:56px;object-fit:cover;border-radius:5px;margin-bottom:5px">`:`<div style="font-size:24px;text-align:center;margin-bottom:3px">${r.emoji||'🍽️'}</div>`}<div style="font-size:11px;font-weight:600;color:var(--text)">${r.name}</div><div style="font-size:9px;color:var(--purple2);margin-top:1px">${r.type==='restaurant'?'Restaurant':'Home cook'}</div></div>`).join('')}
 function openNewRecipe(){editingRecipeId=null;document.getElementById('recipe-form-title').textContent='New Recipe';['rec-name','rec-ingredients','rec-instructions','rec-phone','rec-menu','rec-opentable'].forEach(id=>document.getElementById(id).value='');document.getElementById('rec-type').value='homecook';document.getElementById('rec-photo-preview').style.display='none';document.getElementById('rec-delete-btn').style.display='none';toggleRecipeType();document.getElementById('new-recipe-modal').classList.add('open')}
 function openEditRecipe(id){editingRecipeId=id;const r=recipes.find(x=>x.id===id);if(!r)return;document.getElementById('recipe-form-title').textContent='Edit Recipe';document.getElementById('rec-name').value=r.name;document.getElementById('rec-type').value=r.type;document.getElementById('rec-ingredients').value=(r.ingredients||[]).join('\n');document.getElementById('rec-instructions').value=r.instructions||'';document.getElementById('rec-phone').value=r.phone||'';document.getElementById('rec-menu').value=r.menu||'';document.getElementById('rec-opentable').value=r.opentable||'';document.getElementById('rec-delete-btn').style.display='block';if(r.photo){document.getElementById('rec-photo-img').src=r.photo;document.getElementById('rec-photo-preview').style.display='block'}else{document.getElementById('rec-photo-preview').style.display='none'}toggleRecipeType();document.getElementById('new-recipe-modal').classList.add('open')}
 function closeNewRecipe(){document.getElementById('new-recipe-modal').classList.remove('open')}
 function toggleRecipeType(){const t=document.getElementById('rec-type').value;document.getElementById('home-cook-fields').style.display=t==='homecook'?'block':'none';document.getElementById('restaurant-fields').style.display=t==='restaurant'?'block':'none'}
 document.getElementById('rec-type').addEventListener('change',toggleRecipeType);
 function handleRecipePhoto(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{document.getElementById('rec-photo-img').src=ev.target.result;document.getElementById('rec-photo-preview').style.display='block'};r.readAsDataURL(f)}
-function saveRecipe(){const name=document.getElementById('rec-name').value.trim();if(!name)return;const photo=document.getElementById('rec-photo-preview').style.display!=='none'?document.getElementById('rec-photo-img').src:'';const r={id:editingRecipeId||Date.now(),name,type:document.getElementById('rec-type').value,photo,emoji:photo?'':'🍽️',ingredients:document.getElementById('rec-ingredients').value.split('\n').map(s=>s.trim()).filter(Boolean),instructions:document.getElementById('rec-instructions').value.trim(),phone:document.getElementById('rec-phone').value.trim(),menu:document.getElementById('rec-menu').value.trim(),opentable:document.getElementById('rec-opentable').value.trim()};if(editingRecipeId){recipes=recipes.map(x=>x.id===editingRecipeId?r:x)}else{recipes.push(r)}sd('phfc_recipes',recipes);closeNewRecipe();renderRecipeGrid();renderDinnerSidebar();renderCal()}
-function deleteRecipe(){if(!confirm('Delete recipe?'))return;recipes=recipes.filter(r=>r.id!==editingRecipeId);sd('phfc_recipes',recipes);closeNewRecipe();renderRecipeGrid();renderDinnerSidebar();renderCal()}
-function toggleVoice(){if(!('webkitSpeechRecognition' in window||'SpeechRecognition' in window)){alert('Voice input: use Chrome browser for best support.');return}if(isRecording){voiceRecognition.stop();return}const SR=window.SpeechRecognition||window.webkitSpeechRecognition;voiceRecognition=new SR();voiceRecognition.continuous=true;voiceRecognition.interimResults=false;voiceRecognition.onresult=e=>{let t='';for(let i=e.resultIndex;i<e.results.length;i++)t+=e.results[i][0].transcript+' ';document.getElementById('rec-instructions').value+=t};voiceRecognition.onend=()=>{isRecording=false;const b=document.getElementById('voice-btn');b.classList.remove('recording');b.innerHTML='🎤 Voice'};voiceRecognition.start();isRecording=true;const b=document.getElementById('voice-btn');b.classList.add('recording');b.innerHTML='⏹ Stop'}
+function toggleVoice(){if(!('webkitSpeechRecognition' in window||'SpeechRecognition' in window)){alert('Voice input: use Chrome for best support.');return}if(isRecording){voiceRecognition.stop();return}const SR=window.SpeechRecognition||window.webkitSpeechRecognition;voiceRecognition=new SR();voiceRecognition.continuous=true;voiceRecognition.interimResults=false;voiceRecognition.onresult=e=>{let t='';for(let i=e.resultIndex;i<e.results.length;i++)t+=e.results[i][0].transcript+' ';document.getElementById('rec-instructions').value+=t};voiceRecognition.onend=()=>{isRecording=false;const b=document.getElementById('voice-btn');b.classList.remove('recording');b.innerHTML='🎤 Voice'};voiceRecognition.start();isRecording=true;const b=document.getElementById('voice-btn');b.classList.add('recording');b.innerHTML='⏹ Stop'}
 
+// ── CALENDAR ──
 function setView(v){currentView=v;document.querySelectorAll('.view-tab').forEach(t=>t.classList.toggle('active',t.textContent.toLowerCase()===v));renderCal()}
 function navCal(dir){if(currentView==='month')viewDate.setMonth(viewDate.getMonth()+dir);else viewDate.setDate(viewDate.getDate()+(currentView==='week'?dir*7:dir));renderCal()}
 function navToday(){viewDate=new Date(now);renderCal()}
@@ -499,6 +723,7 @@ function renderCal(){
   if(currentView==='month')renderMonth(body,title);else if(currentView==='week')renderWeek(body,title);else if(currentView==='agenda')renderAgenda(body,title);else renderToday(body,title);
   renderTodos();renderShop();renderPriorities();renderWeeklys();renderDinnerSidebar();
 }
+
 function renderToday(body,title){
   const td=fmtDate(now);title.textContent=now.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
   const dayEvs=events.filter(e=>e.date===td).sort((a,b)=>a.time>b.time?1:-1);
@@ -525,7 +750,7 @@ function renderWeek(body,title){
   const days=[];for(let i=0;i<7;i++){const d=new Date(s);d.setDate(d.getDate()+i);days.push(d)}
   const hours=[];for(let h=6;h<22;h++)hours.push(h);
   let html=`<div class="week-grid"><div class="time-col"><div class="week-dow" style="height:46px"></div>${hours.map(h=>`<div class="time-slot">${h%12||12}${h<12?'a':'p'}</div>`).join('')}</div>`;
-  days.forEach(d=>{const ds=fmtDate(d);const isToday=ds===fmtDate(now);html+=`<div><div class="week-dow${isToday?' today-col':''}"><div class="week-dow-name">${DAYS[d.getDay()].substring(0,2)}</div><div class="week-dow-num">${d.getDate()}</div></div><div class="week-col" style="position:relative">${hours.map(h=>`<div class="week-slot" onclick="openAddModal('${ds}','${String(h).padStart(2,'0')}:00')"></div>`).join('')}${events.filter(e=>e.date===ds&&e.time).map(ev=>{const[eh,em]=ev.time.split(':');const top=((+eh-6)*40+(+em/60)*40);return`<div class="week-event" style="top:${46+top}px;height:36px;background:${COLORS[ev.who]||COLORS.family}" onclick="evClick(${ev.id},event)">${fmtTime(ev.time)} ${ev.title}</div>`}).join('')}${(()=>{const r=getDinnerForDate(ds);if(!r)return'';const top=(17-6)*40+46;const th=r.photo?`<img src="${r.photo}" style="width:18px;height:18px;border-radius:2px;object-fit:cover;flex-shrink:0">`:`<span class="dinner-week-emoji">${r.emoji||'🍽️'}</span>`;return`<div class="dinner-week-event" style="top:${top}px;height:36px" onclick="event.stopPropagation();openDinnerDetail('${ds}')">${th}<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:9px">${r.name}</span></div>`})()}</div></div>`});
+  days.forEach(d=>{const ds=fmtDate(d);const isToday=ds===fmtDate(now);html+=`<div><div class="week-dow${isToday?' today-col':''}"><div class="week-dow-name">${DAYS[d.getDay()].substring(0,2)}</div><div class="week-dow-num">${d.getDate()}</div></div><div class="week-col" style="position:relative">${hours.map(h=>`<div class="week-slot" onclick="openAddModal('${ds}','${String(h).padStart(2,'0')}:00')"></div>`).join('')}${events.filter(e=>e.date===ds&&e.time).map(ev=>{const[eh,em]=ev.time.split(':');const top=((+eh-6)*40+(+em/60)*40);return`<div class="week-event" style="top:${46+top}px;height:36px;background:${COLORS[ev.who]||COLORS.family}" onclick="evClick(${ev.id},event)">${fmtTime(ev.time)} ${ev.title}</div>`}).join('')}${(()=>{const r=getDinnerForDate(ds);if(!r)return'';const top=(17-6)*40+46;const th=r.photo?`<img src="${r.photo}" style="width:18px;height:18px;border-radius:2px;object-fit:cover;flex-shrink:0">`:`<span style="font-size:12px">${r.emoji||'🍽️'}</span>`;return`<div class="dinner-week-event" style="top:${top}px;height:36px" onclick="event.stopPropagation();openDinnerDetail('${ds}')">${th}<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:9px">${r.name}</span></div>`})()}</div></div>`});
   html+=`</div>`;body.innerHTML=html;
 }
 function renderAgenda(body,title){
@@ -535,29 +760,28 @@ function renderAgenda(body,title){
   let html=`<div>`;Object.keys(byDay).sort().forEach(ds=>{const d=parseDate(ds);const isToday=ds===fmtDate(now);html+=`<div class="agenda-day"><div class="agenda-day-header${isToday?' today-header':''}">${isToday?'Today — ':''}${d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}</div>${byDay[ds].map(e=>e.isDinner?`<div class="agenda-event" onclick="openDinnerDetail('${ds}')"><div class="agenda-dot" style="background:var(--purple)"></div><div class="agenda-time">5:00pm</div><div><div class="agenda-title">${e.recipe.emoji||'🍽️'} ${e.name}</div><div class="agenda-who">${e.recipe.type==='restaurant'?'Restaurant':'Home cook'}</div></div></div>`:`<div class="agenda-event" onclick="openDetail(${e.id})"><div class="agenda-dot" style="background:${COLORS[e.who]||COLORS.family}"></div><div class="agenda-time">${fmtTime(e.time)||'All day'}</div><div><div class="agenda-title">${e.title}</div><div class="agenda-who">${e.who}${e.address?' · 📍':''}</div></div></div>`).join('')}</div>`});
   html+=`</div>`;body.innerHTML=html;
 }
+
 function openDetail(id){const ev=events.find(e=>e.id===id);if(!ev)return;detailId=id;document.getElementById('detail-dot').style.background=COLORS[ev.who]||COLORS.family;document.getElementById('detail-title').textContent=ev.title;let meta=`<div class="detail-row"><div class="detail-row-icon">📅</div><div class="detail-row-text"><strong>${fmtDateLong(ev.date)}</strong></div></div>${ev.time?`<div class="detail-row"><div class="detail-row-icon">🕐</div><div class="detail-row-text"><strong>${fmtTime(ev.time)}</strong></div></div>`:''}<div class="detail-row"><div class="detail-row-icon">👤</div><div class="detail-row-text"><strong style="text-transform:capitalize">${ev.who}</strong></div></div>${ev.address?`<div class="detail-row"><div class="detail-row-icon">📍</div><div class="detail-row-text">${ev.address}</div></div>`:''}`;document.getElementById('detail-meta').innerHTML=meta;const notesEl=document.getElementById('detail-notes');if(ev.notes){notesEl.textContent=ev.notes;notesEl.style.display='block'}else{notesEl.style.display='none'}const mb=document.getElementById('maps-btn');if(ev.address){mb.href='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(ev.address);mb.style.display='flex'}else{mb.style.display='none'}document.getElementById('detail-modal').classList.add('open')}
 function closeDetailModal(){document.getElementById('detail-modal').classList.remove('open');detailId=null}
 function editFromDetail(){closeDetailModal();openEditModal(detailId)}
-function deleteDetailEvent(){if(!confirm('Delete?'))return;events=events.filter(e=>e.id!==detailId);sd('phfc_v5_events',events);closeDetailModal();renderCal()}
 function openAddModal(date,time){editingId=null;document.getElementById('modal-mode-title').textContent='Add Event';document.getElementById('btn-delete-event').style.display='none';document.getElementById('ev-title').value='';document.getElementById('ev-date').value=date||fmtDate(now);document.getElementById('ev-time').value=time||'09:00';document.getElementById('ev-who').value='shane';document.getElementById('ev-address').value='';document.getElementById('ev-notes').value='';document.getElementById('add-modal').classList.add('open');setTimeout(()=>document.getElementById('ev-title').focus(),100)}
 function openEditModal(id){const ev=events.find(e=>e.id===id);if(!ev)return;editingId=id;document.getElementById('modal-mode-title').textContent='Edit Event';document.getElementById('btn-delete-event').style.display='block';document.getElementById('ev-title').value=ev.title;document.getElementById('ev-date').value=ev.date;document.getElementById('ev-time').value=ev.time||'';document.getElementById('ev-who').value=ev.who;document.getElementById('ev-address').value=ev.address||'';document.getElementById('ev-notes').value=ev.notes||'';document.getElementById('add-modal').classList.add('open');setTimeout(()=>document.getElementById('ev-title').focus(),100)}
 function closeAddModal(){document.getElementById('add-modal').classList.remove('open');editingId=null}
-function saveEvent(){const t=document.getElementById('ev-title').value.trim();if(!t)return;const ev={id:editingId||Date.now(),title:t,date:document.getElementById('ev-date').value,time:document.getElementById('ev-time').value,who:document.getElementById('ev-who').value,address:document.getElementById('ev-address').value.trim(),notes:document.getElementById('ev-notes').value.trim()};if(editingId){events=events.map(e=>e.id===editingId?ev:e)}else{events.push(ev)}sd('phfc_v5_events',events);closeAddModal();renderCal()}
-function deleteEditingEvent(){if(!confirm('Delete?'))return;events=events.filter(e=>e.id!==editingId);sd('phfc_v5_events',events);closeAddModal();renderCal()}
-['add-modal','detail-modal','dinner-planner-modal','dinner-detail-modal','recipe-modal','new-recipe-modal'].forEach(id=>{document.getElementById(id).addEventListener('click',function(e){if(e.target===this)this.classList.remove('open')})});
-function renderTodos(){document.getElementById('todo-list').innerHTML=todos.map((t,i)=>`<div class="todo-item${t.done?' done':''}" onclick="toggleTodo(${i})"><div class="todo-check">${t.done?'✓':''}</div><div class="todo-text">${t.text}</div><span class="todo-cat cat-${t.cat}">${t.cat}</span></div>`).join('')}
-function renderShop(){document.getElementById('shop-list').innerHTML=shopping.map((s,i)=>`<div class="shop-item${s.done?' got':''}" onclick="toggleShop(${i})"><div class="shop-check">${s.done?'✓':''}</div><div class="shop-text">${s.text}</div><span class="shop-cat">${s.cat}</span></div>`).join('')}
-function renderPriorities(){document.getElementById('priorities-list').innerHTML=priorities.map((p,i)=>`<div class="priority-item${p.done?' done':''}" onclick="togglePriority(${i})"><div class="priority-num">${i+1}</div><div class="priority-text">${p.text}</div></div>`).join('')}
-function renderWeeklys(){document.getElementById('weekly-list').innerHTML=weeklys.map((w,i)=>`<div class="priority-item${w.done?' done':''}" onclick="toggleWeekly(${i})"><div class="priority-num">${i+1}</div><div class="priority-text">${w.text}</div></div>`).join('')}
-function toggleTodo(i){todos[i].done=!todos[i].done;sd('phfc_todos',todos);renderTodos()}
-function toggleShop(i){shopping[i].done=!shopping[i].done;sd('phfc_shop',shopping);renderShop()}
-function togglePriority(i){priorities[i].done=!priorities[i].done;sd('phfc_priorities',priorities);renderPriorities()}
-function toggleWeekly(i){weeklys[i].done=!weeklys[i].done;sd('phfc_weekly',weeklys);renderWeeklys()}
-function saveTodo(){const inp=document.getElementById('todo-input');if(!inp.value.trim())return;todos.push({id:Date.now(),text:inp.value.trim(),done:false,cat:'personal'});sd('phfc_todos',todos);inp.value='';renderTodos()}
-function saveShop(){const inp=document.getElementById('shop-input');if(!inp.value.trim())return;shopping.push({id:Date.now(),text:inp.value.trim(),done:false,cat:'Groceries'});sd('phfc_shop',shopping);inp.value='';renderShop()}
-function addPriority(){const t=prompt('New daily priority:');if(t){priorities.push({id:Date.now(),text:t,done:false});sd('phfc_priorities',priorities);renderPriorities()}}
-function addWeekly(){const t=prompt('New weekly goal:');if(t){weeklys.push({id:Date.now(),text:t,done:false});sd('phfc_weekly',weeklys);renderWeeklys()}}
-updateClock();setInterval(updateClock,1000);buildWeather();setDailyQuote();renderCal();
+
+function renderTodos(){document.getElementById('todo-list').innerHTML=todos.map(t=>`<div class="todo-item${t.done?' done':''}" onclick="toggleTodo(${t.id},${t.done})"><div class="todo-check">${t.done?'✓':''}</div><div class="todo-text">${t.text}</div><span class="todo-cat cat-${t.cat||'personal'}">${t.cat||'personal'}</span></div>`).join('')}
+function renderShop(){document.getElementById('shop-list').innerHTML=shopping.map(s=>`<div class="shop-item${s.done?' got':''}" onclick="toggleShop(${s.id},${s.done})"><div class="shop-check">${s.done?'✓':''}</div><div class="shop-text">${s.text}</div><span class="shop-cat">${s.cat||''}</span></div>`).join('')}
+function renderPriorities(){document.getElementById('priorities-list').innerHTML=priorities.map((p,i)=>`<div class="priority-item${p.done?' done':''}" onclick="togglePriority(${p.id},${p.done})"><div class="priority-num">${i+1}</div><div class="priority-text">${p.text}</div></div>`).join('')}
+function renderWeeklys(){document.getElementById('weekly-list').innerHTML=weeklys.map((w,i)=>`<div class="priority-item${w.done?' done':''}" onclick="toggleWeekly(${w.id},${w.done})"><div class="priority-num">${i+1}</div><div class="priority-text">${w.text}</div></div>`).join('')}
+
+['add-modal','detail-modal','dinner-planner-modal','dinner-detail-modal','new-recipe-modal'].forEach(id=>{document.getElementById(id).addEventListener('click',function(e){if(e.target===this)this.classList.remove('open')})});
+
+function updateClock(){const n=new Date();document.getElementById('clock').textContent=n.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'});document.getElementById('clock-date').textContent=n.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'})}
+function buildWeather(){const s=document.getElementById('weather-strip');s.innerHTML='';for(let i=0;i<7;i++){const d=new Date(now);d.setDate(now.getDate()+i);const w=WD[i];const div=document.createElement('div');div.className='weather-day'+(i===0?' today':'');div.innerHTML=`<div class="wd-name">${i===0?'Today':DAYS[d.getDay()]}</div><div class="wd-icon">${w.i}</div><div class="wd-temp">${w.t}°</div><div class="wd-cond">${w.c}</div>`;s.appendChild(div)}}
+function setDailyQuote(){document.getElementById('daily-quote').textContent=QUOTES[now.getDay()%QUOTES.length]}
+
+updateClock();setInterval(updateClock,1000);
+buildWeather();setDailyQuote();
+initDB();
 </script>
 </body>
 </html>
