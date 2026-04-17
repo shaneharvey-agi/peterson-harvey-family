@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Event, Recipe } from '@/lib/supabase'
+import { Event } from '@/lib/supabase'
 import { COLORS, DAYS, QUOTES, PLACEHOLDER_WEATHER, FAMILY_MEMBERS } from '@/lib/constants'
-import { fmtDate, parseDate, fmtTime, fmtDateLong, getWeekDates } from '@/lib/helpers'
+import { fmtDate, parseDate, fmtTime, fmtDateLong } from '@/lib/helpers'
 import * as store from '@/lib/store'
 
 type ViewMode = 'today' | 'week' | 'month' | 'agenda'
@@ -18,31 +18,18 @@ export default function Dashboard() {
   // Data
   const [events, setEvents] = useState<Event[]>([])
   const [todos, setTodos] = useState<store.AppState['todos']>([])
-  const [shopping, setShopping] = useState<store.AppState['shopping']>([])
-  const [priorities, setPriorities] = useState<store.AppState['priorities']>([])
-  const [weeklys, setWeeklys] = useState<store.AppState['weeklys']>([])
-  const [recipes, setRecipes] = useState<Recipe[]>([])
-  const [dinnerPlan, setDinnerPlan] = useState<Record<string, number | null>>({})
-  const [pantry, setPantry] = useState<Record<number, Record<number, boolean>>>({})
 
   // UI State
   const [currentView, setCurrentView] = useState<ViewMode>('today')
   const [viewDate, setViewDate] = useState(new Date(now.current))
   const [todoInput, setTodoInput] = useState('')
-  const [shopInput, setShopInput] = useState('')
 
   // Modal State
   const [addModalOpen, setAddModalOpen] = useState(false)
   const [detailModalOpen, setDetailModalOpen] = useState(false)
-  const [dinnerPlannerOpen, setDinnerPlannerOpen] = useState(false)
-  const [dinnerDetailOpen, setDinnerDetailOpen] = useState(false)
-  const [recipeModalOpen, setRecipeModalOpen] = useState(false)
 
   const [editingId, setEditingId] = useState<number | null>(null)
   const [detailId, setDetailId] = useState<number | null>(null)
-  const [editingRecipeId, setEditingRecipeId] = useState<number | null>(null)
-  const [currentDinnerDate, setCurrentDinnerDate] = useState<string | null>(null)
-  const [tempDinnerPlan, setTempDinnerPlan] = useState<Record<string, number | null>>({})
 
   // Event form
   const [evTitle, setEvTitle] = useState('')
@@ -51,27 +38,6 @@ export default function Dashboard() {
   const [evWho, setEvWho] = useState('shane')
   const [evAddress, setEvAddress] = useState('')
   const [evNotes, setEvNotes] = useState('')
-
-  // Recipe form
-  const [recName, setRecName] = useState('')
-  const [recType, setRecType] = useState('homecook')
-  const [recPhoto, setRecPhoto] = useState('')
-  const [recIngredients, setRecIngredients] = useState('')
-  const [recInstructions, setRecInstructions] = useState('')
-  const [recPhone, setRecPhone] = useState('')
-  const [recMenu, setRecMenu] = useState('')
-  const [recOpentable, setRecOpentable] = useState('')
-
-  // Voice
-  const voiceRef = useRef<any>(null)
-  const [isRecording, setIsRecording] = useState(false)
-
-  // ── VOICE CLEANUP ──
-  useEffect(() => {
-    return () => {
-      if (voiceRef.current) { voiceRef.current.stop(); voiceRef.current = null }
-    }
-  }, [])
 
   // ── CLOCK ──
   useEffect(() => {
@@ -90,12 +56,6 @@ export default function Dashboard() {
     try {
       if (table === 'events' || table === '__all') setEvents(await store.loadEvents())
       if (table === 'todos' || table === '__all') setTodos(await store.loadTodos())
-      if (table === 'shopping' || table === '__all') setShopping(await store.loadShopping())
-      if (table === 'priorities' || table === '__all') setPriorities(await store.loadPriorities())
-      if (table === 'weeklys' || table === '__all') setWeeklys(await store.loadWeeklys())
-      if (table === 'recipes' || table === '__all') setRecipes(await store.loadRecipes())
-      if (table === 'dinner_plan' || table === '__all') setDinnerPlan(await store.loadDinnerPlan())
-      if (table === 'pantry' || table === '__all') setPantry(await store.loadPantry())
     } catch (e) {
       console.error('Refresh error:', e)
     }
@@ -109,12 +69,6 @@ export default function Dashboard() {
         const data = await store.loadAllData()
         setEvents(data.events)
         setTodos(data.todos)
-        setShopping(data.shopping)
-        setPriorities(data.priorities)
-        setWeeklys(data.weeklys)
-        setRecipes(data.recipes)
-        setDinnerPlan(data.dinnerPlan)
-        setPantry(data.pantry)
         setSyncStatus('online')
       } catch (e) {
         console.error('DB init error:', e)
@@ -137,12 +91,6 @@ export default function Dashboard() {
 
   // ── HELPERS ──
   const todayStr = fmtDate(now.current)
-  const weekDates = getWeekDates(now.current)
-
-  function getDinnerForDate(ds: string): Recipe | null {
-    const rid = dinnerPlan[ds]
-    return rid ? recipes.find(r => r.id === rid) || null : null
-  }
 
   // ── EVENT CRUD ──
   async function handleSaveEvent() {
@@ -196,152 +144,6 @@ export default function Dashboard() {
     } catch (e) { console.error('Toggle todo error:', e); setSyncStatus('offline') }
   }
 
-  // ── SHOPPING CRUD ──
-  async function handleAddShop() {
-    if (!shopInput.trim()) return
-    setSyncStatus('syncing')
-    try {
-      await store.addShoppingItem(shopInput.trim())
-      setShopping(await store.loadShopping())
-      setShopInput('')
-      setSyncStatus('online')
-    } catch (e) { console.error('Add shop error:', e); setSyncStatus('offline') }
-  }
-
-  async function handleToggleShop(id: number, done: boolean) {
-    try {
-      await store.toggleShoppingItem(id, done)
-      setShopping(await store.loadShopping())
-    } catch (e) { console.error('Toggle shop error:', e); setSyncStatus('offline') }
-  }
-
-  // ── PRIORITY / WEEKLY CRUD ──
-  async function handleAddPriority() {
-    const t = prompt('New daily priority:')
-    if (!t) return
-    setSyncStatus('syncing')
-    try {
-      await store.addPriority(t, priorities)
-      setPriorities(await store.loadPriorities())
-      setSyncStatus('online')
-    } catch (e) { console.error('Add priority error:', e); setSyncStatus('offline') }
-  }
-
-  async function handleTogglePriority(id: number, done: boolean) {
-    try {
-      await store.togglePriority(id, done)
-      setPriorities(await store.loadPriorities())
-    } catch (e) { console.error('Toggle priority error:', e); setSyncStatus('offline') }
-  }
-
-  async function handleAddWeekly() {
-    const t = prompt('New weekly goal:')
-    if (!t) return
-    setSyncStatus('syncing')
-    try {
-      await store.addWeekly(t, weeklys)
-      setWeeklys(await store.loadWeeklys())
-      setSyncStatus('online')
-    } catch (e) { console.error('Add weekly error:', e); setSyncStatus('offline') }
-  }
-
-  async function handleToggleWeekly(id: number, done: boolean) {
-    try {
-      await store.toggleWeekly(id, done)
-      setWeeklys(await store.loadWeeklys())
-    } catch (e) { console.error('Toggle weekly error:', e); setSyncStatus('offline') }
-  }
-
-  // ── DINNER PLAN ──
-  async function handleSaveDinnerPlan() {
-    setSyncStatus('syncing')
-    try {
-      await store.saveDinnerPlan(tempDinnerPlan, weekDates)
-      setDinnerPlan(await store.loadDinnerPlan())
-      setDinnerPlannerOpen(false)
-      setSyncStatus('online')
-    } catch (e) { console.error('Save dinner plan error:', e); setSyncStatus('offline') }
-  }
-
-  // ── RECIPE CRUD ──
-  async function handleSaveRecipe() {
-    if (!recName.trim()) return
-    setSyncStatus('syncing')
-    try {
-      const r = {
-        name: recName.trim(), type: recType, photo: recPhoto, emoji: recPhoto ? '' : '\u{1F37D}\u{FE0F}',
-        ingredients: recIngredients.split('\n').map(s => s.trim()).filter(Boolean),
-        instructions: recInstructions.trim(), phone: recPhone.trim(),
-        menu: recMenu.trim(), opentable: recOpentable.trim(),
-      }
-      await store.saveRecipe(r, editingRecipeId)
-      setRecipes(await store.loadRecipes())
-      setRecipeModalOpen(false)
-      setSyncStatus('online')
-      // Reset form state
-      setRecName(''); setRecType('homecook'); setRecPhoto('')
-      setRecIngredients(''); setRecInstructions('')
-      setRecPhone(''); setRecMenu(''); setRecOpentable('')
-    } catch (e) { console.error('Save recipe error:', e); setSyncStatus('offline') }
-  }
-
-  async function handleDeleteRecipe() {
-    if (!confirm('Delete recipe?') || !editingRecipeId) return
-    setSyncStatus('syncing')
-    try {
-      await store.deleteRecipe(editingRecipeId)
-      setRecipes(await store.loadRecipes())
-      setRecipeModalOpen(false)
-      setSyncStatus('online')
-    } catch (e) { console.error('Delete recipe error:', e); setSyncStatus('offline') }
-  }
-
-  // ── PANTRY ──
-  async function handleTogglePantry(recipeId: number, idx: number) {
-    try {
-      const current = pantry[recipeId]?.[idx] || false
-      await store.togglePantryItem(recipeId, idx, current)
-      setPantry(await store.loadPantry())
-    } catch (e) { console.error('Toggle pantry error:', e); setSyncStatus('offline') }
-  }
-
-  async function handleAddMissingToShopping(recipeId: number) {
-    setSyncStatus('syncing')
-    try {
-      const count = await store.addMissingToShopping(recipeId, recipes, pantry, shopping)
-      setShopping(await store.loadShopping())
-      setSyncStatus('online')
-      alert(`Added ${count} item(s) to shopping list!`)
-    } catch (e) { console.error('Add missing to shopping error:', e); setSyncStatus('offline') }
-  }
-
-  // ── VOICE ──
-  function toggleVoice() {
-    if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
-      alert('Voice input: use Chrome for best support.')
-      return
-    }
-    if (isRecording) { voiceRef.current?.stop(); return }
-    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-    const recognition = new SR()
-    recognition.continuous = true
-    recognition.interimResults = false
-    recognition.onresult = (e: any) => {
-      let t = ''
-      for (let i = e.resultIndex; i < e.results.length; i++) t += e.results[i][0].transcript + ' '
-      setRecInstructions(prev => prev + t)
-    }
-    recognition.onend = () => { setIsRecording(false); voiceRef.current = null }
-    recognition.onerror = (event: any) => {
-      console.error('Speech recognition error:', event.error)
-      setIsRecording(false)
-      voiceRef.current = null
-    }
-    recognition.start()
-    voiceRef.current = recognition
-    setIsRecording(true)
-  }
-
   // ── MODAL OPENERS ──
   function openAddModal(date?: string, time?: string) {
     setEditingId(null)
@@ -366,35 +168,6 @@ export default function Dashboard() {
 
   function closeAddModal() { setAddModalOpen(false); setEditingId(null) }
 
-  function openDinnerPlanner() {
-    setTempDinnerPlan({ ...dinnerPlan })
-    setDinnerPlannerOpen(true)
-  }
-
-  function openDinnerDetail(ds: string) {
-    setCurrentDinnerDate(ds)
-    setDinnerDetailOpen(true)
-  }
-
-  function openNewRecipe() {
-    setEditingRecipeId(null)
-    setRecName(''); setRecType('homecook'); setRecPhoto('')
-    setRecIngredients(''); setRecInstructions('')
-    setRecPhone(''); setRecMenu(''); setRecOpentable('')
-    setRecipeModalOpen(true)
-  }
-
-  function openEditRecipe(id: number) {
-    const r = recipes.find(x => x.id === id)
-    if (!r) return
-    setEditingRecipeId(id)
-    setRecName(r.name); setRecType(r.type); setRecPhoto(r.photo || '')
-    setRecIngredients((r.ingredients || []).join('\n'))
-    setRecInstructions(r.instructions || '')
-    setRecPhone(r.phone || ''); setRecMenu(r.menu || ''); setRecOpentable(r.opentable || '')
-    setRecipeModalOpen(true)
-  }
-
   // ── CALENDAR NAV ──
   function navCal(dir: number) {
     setViewDate(prev => {
@@ -407,22 +180,12 @@ export default function Dashboard() {
 
   function navToday() { setViewDate(new Date(now.current)) }
 
-  // ── RECIPE PHOTO HANDLER ──
-  function handleRecipePhoto(e: React.ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0]
-    if (!f) return
-    const reader = new FileReader()
-    reader.onload = ev => { setRecPhoto(ev.target?.result as string) }
-    reader.onerror = () => { console.error('Failed to read file'); alert('Failed to load image. Try again.') }
-    reader.readAsDataURL(f)
-  }
-
   // ── LOADING ──
   if (loading) {
     return (
       <div className="loading-overlay">
         <div className="loading-spinner" />
-        <div className="loading-text">Connecting to Peterson — Harvey...</div>
+        <div className="loading-text">Connecting to Mikayla...</div>
       </div>
     )
   }
@@ -430,19 +193,13 @@ export default function Dashboard() {
   // ── DETAIL EVENT ──
   const detailEvent = detailId ? events.find(e => e.id === detailId) : null
 
-  // ── DINNER DETAIL RECIPE ──
-  const dinnerDetailRecipe = currentDinnerDate ? getDinnerForDate(currentDinnerDate) : null
-  const dinnerDetailDateLabel = currentDinnerDate
-    ? parseDate(currentDinnerDate).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
-    : ''
-
   return (
     <>
       {/* ── HEADER ── */}
       <div className="header">
         <div>
-          <div className="logo-name">Peterson — Harvey</div>
-          <div className="logo-sub">Family Command Center</div>
+          <div className="logo-name">Mikayla.ai</div>
+          <div className="logo-sub">Your family, handled</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span className={`sync-status sync-${syncStatus}`}>
@@ -514,10 +271,10 @@ export default function Dashboard() {
           </div>
 
           {/* ── CALENDAR VIEWS ── */}
-          {currentView === 'today' && <TodayView events={events} now={now.current} todayStr={todayStr} getDinnerForDate={getDinnerForDate} openDetail={openDetail} openDinnerDetail={openDinnerDetail} openDinnerPlanner={openDinnerPlanner} />}
-          {currentView === 'month' && <MonthView events={events} viewDate={viewDate} now={now.current} getDinnerForDate={getDinnerForDate} openAddModal={openAddModal} openDetail={openDetail} openDinnerDetail={openDinnerDetail} />}
-          {currentView === 'week' && <WeekView events={events} viewDate={viewDate} now={now.current} getDinnerForDate={getDinnerForDate} openAddModal={openAddModal} openDetail={openDetail} openDinnerDetail={openDinnerDetail} />}
-          {currentView === 'agenda' && <AgendaView events={events} now={now.current} weekDates={weekDates} getDinnerForDate={getDinnerForDate} openDetail={openDetail} openDinnerDetail={openDinnerDetail} />}
+          {currentView === 'today' && <TodayView events={events} now={now.current} todayStr={todayStr} openDetail={openDetail} />}
+          {currentView === 'month' && <MonthView events={events} viewDate={viewDate} now={now.current} openAddModal={openAddModal} openDetail={openDetail} />}
+          {currentView === 'week' && <WeekView events={events} viewDate={viewDate} now={now.current} openAddModal={openAddModal} openDetail={openDetail} />}
+          {currentView === 'agenda' && <AgendaView events={events} now={now.current} openDetail={openDetail} />}
         </div>
 
         {/* ── SIDEBAR ── */}
@@ -533,34 +290,6 @@ export default function Dashboard() {
                 </div>
               ))}
             </div>
-          </div>
-
-          {/* Weekly Big 3 */}
-          <div className="sidebar-section gold-section">
-            <div className="sidebar-title">
-              This Week — Big 3
-              <button className="sidebar-add" onClick={handleAddWeekly}>+</button>
-            </div>
-            {weeklys.map((w, i) => (
-              <div key={w.id} className={`priority-item${w.done ? ' done' : ''}`} onClick={() => handleToggleWeekly(w.id, w.done)}>
-                <div className="priority-num">{i + 1}</div>
-                <div className="priority-text">{w.text}</div>
-              </div>
-            ))}
-          </div>
-
-          {/* Today Top 3 */}
-          <div className="sidebar-section gold-section">
-            <div className="sidebar-title">
-              Today — Top 3
-              <button className="sidebar-add" onClick={handleAddPriority}>+</button>
-            </div>
-            {priorities.map((p, i) => (
-              <div key={p.id} className={`priority-item${p.done ? ' done' : ''}`} onClick={() => handleTogglePriority(p.id, p.done)}>
-                <div className="priority-num">{i + 1}</div>
-                <div className="priority-text">{p.text}</div>
-              </div>
-            ))}
           </div>
 
           {/* Todos */}
@@ -580,54 +309,6 @@ export default function Dashboard() {
                 onChange={e => setTodoInput(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') handleAddTodo() }} />
               <button className="qa-btn" onClick={handleAddTodo}>Add</button>
-            </div>
-          </div>
-
-          {/* Dinners */}
-          <div className="sidebar-section dinner-section">
-            <div className="sidebar-title-dinner">
-              This Week&apos;s Dinners
-              <button className="sidebar-add-purple" onClick={openDinnerPlanner}>{'\u270E'}</button>
-            </div>
-            <div className="dinner-week-list">
-              {weekDates.map(ds => {
-                const d = parseDate(ds)
-                const r = getDinnerForDate(ds)
-                const isToday = ds === todayStr
-                return (
-                  <div key={ds} className={`dinner-day-item${isToday ? ' today-dinner' : ''}`} onClick={() => openDinnerDetail(ds)}>
-                    <div className="dinner-day-label">{DAYS[d.getDay()].substring(0, 3)}</div>
-                    {r ? (
-                      r.photo
-                        ? <img src={r.photo} className="dinner-day-thumb" alt={r.name} />
-                        : <div className="dinner-day-emoji">{r.emoji || '\u{1F37D}\u{FE0F}'}</div>
-                    ) : (
-                      <div style={{ width: 24, height: 24, border: '1px dashed #3d2060', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: '#3d2060' }}>?</div>
-                    )}
-                    <div><div className="dinner-day-name">{r ? r.name : 'Not planned'}</div></div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-
-          {/* Shopping */}
-          <div className="sidebar-section gold-section">
-            <div className="sidebar-title">Shopping <button className="sidebar-add" onClick={() => document.getElementById('shop-input')?.focus()}>+</button></div>
-            <div className="shop-list">
-              {shopping.map(s => (
-                <div key={s.id} className={`shop-item${s.done ? ' got' : ''}`} onClick={() => handleToggleShop(s.id, s.done)}>
-                  <div className="shop-check">{s.done ? '\u2713' : ''}</div>
-                  <div className="shop-text">{s.text}</div>
-                  <span className="shop-cat">{s.cat || ''}</span>
-                </div>
-              ))}
-            </div>
-            <div className="quick-add">
-              <input className="qa-input" id="shop-input" placeholder="Add item..." value={shopInput}
-                onChange={e => setShopInput(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') handleAddShop() }} />
-              <button className="qa-btn" onClick={handleAddShop}>Add</button>
             </div>
           </div>
         </div>
@@ -695,189 +376,17 @@ export default function Dashboard() {
           </div>
         )}
       </div>
-
-      {/* DINNER PLANNER */}
-      <div className={`modal-overlay${dinnerPlannerOpen ? ' open' : ''}`} onClick={e => { if (e.target === e.currentTarget) setDinnerPlannerOpen(false) }}>
-        <div className="modal-box-wide">
-          <div className="modal-title-purple">Plan This Week&apos;s Dinners</div>
-          {weekDates.map(ds => {
-            const d = parseDate(ds)
-            const isToday = ds === todayStr
-            return (
-              <div key={ds} style={{ marginBottom: 8 }}>
-                <label style={{ fontSize: 10, fontWeight: 700, color: isToday ? 'var(--purple3)' : 'var(--purple2)', textTransform: 'uppercase', letterSpacing: 1, display: 'block', marginBottom: 3 }}>
-                  {DAYS[d.getDay()]} {d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}{isToday ? ' (Today)' : ''}
-                </label>
-                <select className="modal-input-purple" style={{ marginBottom: 0 }}
-                  value={tempDinnerPlan[ds] || ''}
-                  onChange={e => setTempDinnerPlan(prev => ({ ...prev, [ds]: e.target.value ? parseInt(e.target.value) : null }))}
-                >
-                  <option value="">-- None --</option>
-                  {recipes.map(r => (
-                    <option key={r.id} value={r.id}>{r.emoji || '\u{1F37D}\u{FE0F}'} {r.name}</option>
-                  ))}
-                </select>
-              </div>
-            )
-          })}
-          <div style={{ display: 'flex', gap: 7, justifyContent: 'space-between', marginTop: 14 }}>
-            <button className="btn-purple" onClick={openNewRecipe} style={{ fontSize: 11 }}>+ New Recipe</button>
-            <div style={{ display: 'flex', gap: 7 }}>
-              <button className="btn-cancel" onClick={() => setDinnerPlannerOpen(false)}>Cancel</button>
-              <button className="btn-purple" onClick={handleSaveDinnerPlan}>Save Week</button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* DINNER DETAIL */}
-      <div className={`modal-overlay${dinnerDetailOpen ? ' open' : ''}`} onClick={e => { if (e.target === e.currentTarget) setDinnerDetailOpen(false) }}>
-        <div className="modal-box-wide">
-          {dinnerDetailRecipe ? (
-            dinnerDetailRecipe.type === 'restaurant' ? (
-              <>
-                <div className="modal-title-purple">{dinnerDetailRecipe.emoji || '\u{1F37D}\u{FE0F}'} {dinnerDetailRecipe.name}</div>
-                <div style={{ fontSize: 10, color: 'var(--purple2)', marginBottom: 12 }}>{dinnerDetailDateLabel} &middot; Restaurant Night</div>
-                {dinnerDetailRecipe.photo && <img src={dinnerDetailRecipe.photo} className="recipe-photo" alt={dinnerDetailRecipe.name} />}
-                {dinnerDetailRecipe.phone && <a className="rest-action-btn btn-call" href={`tel:${dinnerDetailRecipe.phone.replace(/\s/g, '')}`}>{'\u{1F4DE}'} Call {dinnerDetailRecipe.phone}</a>}
-                {dinnerDetailRecipe.menu && <a className="rest-action-btn btn-menu" href={dinnerDetailRecipe.menu} target="_blank" rel="noopener noreferrer">{'\u{1F37D}\u{FE0F}'} View Menu</a>}
-                {dinnerDetailRecipe.opentable && <a className="rest-action-btn btn-opentable" href={dinnerDetailRecipe.opentable} target="_blank" rel="noopener noreferrer">{'\u{1F4C5}'} Book on OpenTable</a>}
-                <div style={{ display: 'flex', gap: 7, justifyContent: 'space-between' }}>
-                  <button className="btn-delete" onClick={() => { setDinnerDetailOpen(false); openEditRecipe(dinnerDetailRecipe.id) }}>Edit</button>
-                  <button className="btn-cancel" onClick={() => setDinnerDetailOpen(false)}>Close</button>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="modal-title-purple">{dinnerDetailRecipe.emoji || '\u{1F37D}\u{FE0F}'} {dinnerDetailRecipe.name}</div>
-                <div style={{ fontSize: 10, color: 'var(--purple2)', marginBottom: 10 }}>{dinnerDetailDateLabel} &middot; 5:00pm</div>
-                {dinnerDetailRecipe.photo && <img src={dinnerDetailRecipe.photo} className="recipe-photo" alt={dinnerDetailRecipe.name} />}
-                {/* Pantry check */}
-                {(() => {
-                  const ing = dinnerDetailRecipe.ingredients || []
-                  const p = pantry[dinnerDetailRecipe.id] || {}
-                  const missing = ing.filter((_, i) => !p[i])
-                  return (
-                    <>
-                      {ing.length > 0 && (
-                        <div className={missing.length === 0 ? 'pantry-summary' : 'pantry-missing'}>
-                          {missing.length === 0 ? '\u2713 You have everything!' : 'Missing: ' + missing.join(', ')}
-                        </div>
-                      )}
-                      {missing.length > 0 && (
-                        <button className="btn-purple" onClick={() => handleAddMissingToShopping(dinnerDetailRecipe.id)} style={{ width: '100%', marginBottom: 10, padding: 7 }}>
-                          + Add missing to shopping
-                        </button>
-                      )}
-                      <div className="recipe-section-title">Ingredients — Pantry Check</div>
-                      <div style={{ marginBottom: 12 }}>
-                        {ing.length > 0 ? ing.map((x, i) => (
-                          <div key={i} className={`ingredient-row${p[i] ? ' have' : ''}`} onClick={() => handleTogglePantry(dinnerDetailRecipe.id, i)}>
-                            <div className="ingr-check">{p[i] ? '\u2713' : ''}</div>
-                            <div className="ingr-text">{x}</div>
-                          </div>
-                        )) : <div style={{ color: 'var(--text3)', fontSize: 11 }}>No ingredients.</div>}
-                      </div>
-                    </>
-                  )
-                })()}
-                <div className="recipe-section-title">Instructions</div>
-                <div style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.7, whiteSpace: 'pre-wrap', marginBottom: 14 }}>
-                  {dinnerDetailRecipe.instructions || 'No instructions yet.'}
-                </div>
-                <div style={{ display: 'flex', gap: 7, justifyContent: 'space-between' }}>
-                  <button className="btn-delete" onClick={() => { setDinnerDetailOpen(false); openEditRecipe(dinnerDetailRecipe.id) }}>Edit Recipe</button>
-                  <button className="btn-cancel" onClick={() => setDinnerDetailOpen(false)}>Close</button>
-                </div>
-              </>
-            )
-          ) : (
-            <>
-              <div className="modal-title-purple">Dinner — {dinnerDetailDateLabel}</div>
-              <div style={{ color: 'var(--text3)', fontSize: 12, marginBottom: 14 }}>No dinner planned.</div>
-              <div style={{ display: 'flex', gap: 7, justifyContent: 'flex-end' }}>
-                <button className="btn-cancel" onClick={() => setDinnerDetailOpen(false)}>Close</button>
-                <button className="btn-purple" onClick={() => { setDinnerDetailOpen(false); openDinnerPlanner() }}>Plan Dinners</button>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* NEW/EDIT RECIPE */}
-      <div className={`modal-overlay${recipeModalOpen ? ' open' : ''}`} onClick={e => { if (e.target === e.currentTarget) setRecipeModalOpen(false) }}>
-        <div className="modal-box-wide">
-          <div className="modal-title-purple">{editingRecipeId ? 'Edit Recipe' : 'New Recipe'}</div>
-          <label className="modal-label-purple">Recipe Name</label>
-          <input className="modal-input-purple" placeholder="e.g. Chicken Stir Fry" value={recName} onChange={e => setRecName(e.target.value)} />
-          <div className="modal-row" style={{ marginBottom: 10 }}>
-            <div>
-              <label className="modal-label-purple">Type</label>
-              <select className="modal-input-purple" style={{ marginBottom: 0 }} value={recType} onChange={e => setRecType(e.target.value)}>
-                <option value="homecook">Home Cook</option>
-                <option value="restaurant">Restaurant</option>
-              </select>
-            </div>
-            <div>
-              <label className="modal-label-purple">Photo</label>
-              <input type="file" accept="image/*" style={{ display: 'none' }} id="rec-photo-file" onChange={handleRecipePhoto} />
-              <button className="modal-input-purple" onClick={() => document.getElementById('rec-photo-file')?.click()} style={{ cursor: 'pointer', textAlign: 'left', color: 'var(--text2)' }}>
-                {'\u{1F4F7}'} Upload
-              </button>
-            </div>
-          </div>
-          {recPhoto && (
-            <div style={{ marginBottom: 10 }}>
-              <img src={recPhoto} style={{ width: '100%', height: 100, objectFit: 'cover', borderRadius: 7 }} alt="Recipe" />
-            </div>
-          )}
-          {recType === 'homecook' && (
-            <>
-              <label className="modal-label-purple">Ingredients (one per line)</label>
-              <textarea className="modal-input-purple" style={{ minHeight: 72, resize: 'vertical', lineHeight: 1.5, marginBottom: 10 }}
-                placeholder={'2 cups chicken\n1 cup broccoli'} value={recIngredients} onChange={e => setRecIngredients(e.target.value)} />
-              <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 5 }}>
-                <label className="modal-label-purple" style={{ marginBottom: 0 }}>Instructions</label>
-                <button className={`voice-btn${isRecording ? ' recording' : ''}`} onClick={toggleVoice} style={{ padding: '3px 9px', fontSize: 10 }}>
-                  {isRecording ? '\u23F9 Stop' : '\u{1F3A4} Voice'}
-                </button>
-              </div>
-              <textarea className="modal-input-purple" style={{ minHeight: 90, resize: 'vertical', lineHeight: 1.5, marginBottom: 10 }}
-                placeholder="Speak or type instructions..." value={recInstructions} onChange={e => setRecInstructions(e.target.value)} />
-            </>
-          )}
-          {recType === 'restaurant' && (
-            <>
-              <label className="modal-label-purple">Phone</label>
-              <input className="modal-input-purple" placeholder="+1 (555) 123-4567" value={recPhone} onChange={e => setRecPhone(e.target.value)} />
-              <label className="modal-label-purple">Menu URL</label>
-              <input className="modal-input-purple" placeholder="https://restaurant.com/menu" value={recMenu} onChange={e => setRecMenu(e.target.value)} />
-              <label className="modal-label-purple">OpenTable / Reservation Link</label>
-              <input className="modal-input-purple" placeholder="https://opentable.com/..." value={recOpentable} onChange={e => setRecOpentable(e.target.value)} />
-            </>
-          )}
-          <div className="modal-actions">
-            {editingRecipeId && <button className="btn-delete" onClick={handleDeleteRecipe}>Delete</button>}
-            <div style={{ display: 'flex', gap: 7, marginLeft: 'auto' }}>
-              <button className="btn-cancel" onClick={() => setRecipeModalOpen(false)}>Cancel</button>
-              <button className="btn-purple" onClick={handleSaveRecipe}>Save Recipe</button>
-            </div>
-          </div>
-        </div>
-      </div>
     </>
   )
 }
 
 // ══════════════ VIEW COMPONENTS ══════════════
 
-function TodayView({ events, now, todayStr, getDinnerForDate, openDetail, openDinnerDetail, openDinnerPlanner }: {
+function TodayView({ events, now, todayStr, openDetail }: {
   events: Event[], now: Date, todayStr: string,
-  getDinnerForDate: (ds: string) => Recipe | null,
-  openDetail: (id: number) => void, openDinnerDetail: (ds: string) => void, openDinnerPlanner: () => void
+  openDetail: (id: number) => void
 }) {
   const dayEvs = events.filter(e => e.date === todayStr).sort((a, b) => (a.time || '') > (b.time || '') ? 1 : -1)
-  const tdDinner = getDinnerForDate(todayStr)
   const upcoming = events.filter(e => e.date > todayStr).sort((a, b) => a.date > b.date ? 1 : (a.time || '') > (b.time || '') ? 1 : -1).slice(0, 4)
 
   return (
@@ -900,19 +409,6 @@ function TodayView({ events, now, todayStr, getDinnerForDate, openDetail, openDi
             <div style={{ color: 'var(--text3)', fontSize: 12, marginTop: 10 }}>No events — clear day.</div>
           )}
         </div>
-        {tdDinner ? (
-          <div className="dinner-today-card" onClick={() => openDinnerDetail(todayStr)}>
-            <div className="dinner-today-label">Tonight</div>
-            {tdDinner.photo ? <img src={tdDinner.photo} className="dinner-today-img" alt={tdDinner.name} /> : <div className="dinner-today-emoji">{tdDinner.emoji || '\u{1F37D}\u{FE0F}'}</div>}
-            <div className="dinner-today-name">{tdDinner.name}</div>
-          </div>
-        ) : (
-          <div className="dinner-today-card" onClick={openDinnerPlanner} style={{ borderColor: '#3d2060' }}>
-            <div className="dinner-today-label">Tonight</div>
-            <div className="dinner-today-emoji">{'\u{1F37D}\u{FE0F}'}</div>
-            <div style={{ fontSize: 9, color: 'var(--text3)' }}>Plan dinner</div>
-          </div>
-        )}
       </div>
       {upcoming.length > 0 && (
         <div style={{ marginTop: 8 }}>
@@ -936,10 +432,9 @@ function TodayView({ events, now, todayStr, getDinnerForDate, openDetail, openDi
   )
 }
 
-function MonthView({ events, viewDate, now, getDinnerForDate, openAddModal, openDetail, openDinnerDetail }: {
+function MonthView({ events, viewDate, now, openAddModal, openDetail }: {
   events: Event[], viewDate: Date, now: Date,
-  getDinnerForDate: (ds: string) => Recipe | null,
-  openAddModal: (date?: string, time?: string) => void, openDetail: (id: number) => void, openDinnerDetail: (ds: string) => void
+  openAddModal: (date?: string, time?: string) => void, openDetail: (id: number) => void
 }) {
   const y = viewDate.getFullYear(), m = viewDate.getMonth()
   const first = new Date(y, m, 1), last = new Date(y, m + 1, 0)
@@ -960,20 +455,13 @@ function MonthView({ events, viewDate, now, getDinnerForDate, openAddModal, open
     const ds = fmtDate(new Date(y, m, d))
     const isToday = ds === todayStr
     const dayEvs = events.filter(e => e.date === ds)
-    const dinner = getDinnerForDate(ds)
     cells.push(
       <div key={ds} className={`day-cell${isToday ? ' today' : ''}`} onClick={() => openAddModal(ds)}>
         <div className="day-num">{d}</div>
-        {dayEvs.slice(0, 2).map(e => (
+        {dayEvs.slice(0, 3).map(e => (
           <div key={e.id} className="day-event" style={{ background: COLORS[e.who] || COLORS.family }}
             onClick={ev => { ev.stopPropagation(); openDetail(e.id) }}>{e.title}</div>
         ))}
-        {dinner && (
-          <div className="day-event" style={{ background: 'var(--purple)' }}
-            onClick={ev => { ev.stopPropagation(); openDinnerDetail(ds) }}>
-            {dinner.emoji || '\u{1F37D}\u{FE0F}'} {dinner.name}
-          </div>
-        )}
       </div>
     )
   }
@@ -991,10 +479,9 @@ function MonthView({ events, viewDate, now, getDinnerForDate, openAddModal, open
   )
 }
 
-function WeekView({ events, viewDate, now, getDinnerForDate, openAddModal, openDetail, openDinnerDetail }: {
+function WeekView({ events, viewDate, now, openAddModal, openDetail }: {
   events: Event[], viewDate: Date, now: Date,
-  getDinnerForDate: (ds: string) => Recipe | null,
-  openAddModal: (date?: string, time?: string) => void, openDetail: (id: number) => void, openDinnerDetail: (ds: string) => void
+  openAddModal: (date?: string, time?: string) => void, openDetail: (id: number) => void
 }) {
   const s = new Date(viewDate); s.setDate(viewDate.getDate() - viewDate.getDay())
   const days: Date[] = []
@@ -1015,7 +502,6 @@ function WeekView({ events, viewDate, now, getDinnerForDate, openAddModal, openD
         const ds = fmtDate(d)
         const isToday = ds === todayStr
         const dayEvents = events.filter(e => e.date === ds && e.time)
-        const dinner = getDinnerForDate(ds)
         return (
           <div key={ds}>
             <div className={`week-dow${isToday ? ' today-col' : ''}`}>
@@ -1036,13 +522,6 @@ function WeekView({ events, viewDate, now, getDinnerForDate, openAddModal, openD
                   </div>
                 )
               })}
-              {dinner && (
-                <div className="dinner-week-event" style={{ top: (17 - 6) * 40 + 46, height: 36 }}
-                  onClick={e => { e.stopPropagation(); openDinnerDetail(ds) }}>
-                  <span style={{ fontSize: 12 }}>{dinner.emoji || '\u{1F37D}\u{FE0F}'}</span>
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 9 }}>{dinner.name}</span>
-                </div>
-              )}
             </div>
           </div>
         )
@@ -1051,24 +530,15 @@ function WeekView({ events, viewDate, now, getDinnerForDate, openAddModal, openD
   )
 }
 
-function AgendaView({ events, now, weekDates, getDinnerForDate, openDetail, openDinnerDetail }: {
-  events: Event[], now: Date, weekDates: string[],
-  getDinnerForDate: (ds: string) => Recipe | null,
-  openDetail: (id: number) => void, openDinnerDetail: (ds: string) => void
+function AgendaView({ events, now, openDetail }: {
+  events: Event[], now: Date,
+  openDetail: (id: number) => void
 }) {
   const todayStr = fmtDate(now)
-  const byDay: Record<string, any[]> = {}
+  const byDay: Record<string, Event[]> = {}
 
   events.filter(e => e.date >= todayStr).sort((a, b) => a.date > b.date ? 1 : a.date < b.date ? -1 : (a.time || '') > (b.time || '') ? 1 : -1)
     .forEach(e => { if (!byDay[e.date]) byDay[e.date] = []; byDay[e.date].push(e) })
-
-  weekDates.forEach(ds => {
-    const r = getDinnerForDate(ds)
-    if (r && ds >= todayStr) {
-      if (!byDay[ds]) byDay[ds] = []
-      byDay[ds].push({ isDinner: true, date: ds, name: r.name, recipe: r })
-    }
-  })
 
   return (
     <div>
@@ -1080,27 +550,16 @@ function AgendaView({ events, now, weekDates, getDinnerForDate, openDetail, open
             <div className={`agenda-day-header${isToday ? ' today-header' : ''}`}>
               {isToday ? 'Today \u2014 ' : ''}{d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
             </div>
-            {byDay[ds].map((e: any, i: number) =>
-              e.isDinner ? (
-                <div key={`dinner-${i}`} className="agenda-event" onClick={() => openDinnerDetail(ds)}>
-                  <div className="agenda-dot" style={{ background: 'var(--purple)' }} />
-                  <div className="agenda-time">5:00pm</div>
-                  <div>
-                    <div className="agenda-title">{e.recipe.emoji || '\u{1F37D}\u{FE0F}'} {e.name}</div>
-                    <div className="agenda-who">{e.recipe.type === 'restaurant' ? 'Restaurant' : 'Home cook'}</div>
-                  </div>
+            {byDay[ds].map((e) => (
+              <div key={e.id} className="agenda-event" onClick={() => openDetail(e.id)}>
+                <div className="agenda-dot" style={{ background: COLORS[e.who] || COLORS.family }} />
+                <div className="agenda-time">{fmtTime(e.time) || 'All day'}</div>
+                <div>
+                  <div className="agenda-title">{e.title}</div>
+                  <div className="agenda-who">{e.who}{e.address ? ' \u{1F4CD}' : ''}</div>
                 </div>
-              ) : (
-                <div key={e.id} className="agenda-event" onClick={() => openDetail(e.id)}>
-                  <div className="agenda-dot" style={{ background: COLORS[e.who] || COLORS.family }} />
-                  <div className="agenda-time">{fmtTime(e.time) || 'All day'}</div>
-                  <div>
-                    <div className="agenda-title">{e.title}</div>
-                    <div className="agenda-who">{e.who}{e.address ? ' \u{1F4CD}' : ''}</div>
-                  </div>
-                </div>
-              )
-            )}
+              </div>
+            ))}
           </div>
         )
       })}
