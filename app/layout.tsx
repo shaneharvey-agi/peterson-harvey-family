@@ -2,12 +2,12 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = {
-  title: 'Peterson — Harvey Family Command Center',
-  description: 'Family coordination dashboard',
+  title: 'Mikayla.ai',
+  description: 'Your family, handled',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'PH Family',
+    title: 'Mikayla.ai',
   },
 }
 
@@ -15,7 +15,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   userScalable: false,
-  themeColor: '#0a0f1e',
+  themeColor: '#07090F',
 }
 
 export default function RootLayout({
@@ -25,12 +25,6 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <head>
-        <link
-          href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Serif+Display&display=swap"
-          rel="stylesheet"
-        />
-      </head>
       <body>{children}</body>
     </html>
   )

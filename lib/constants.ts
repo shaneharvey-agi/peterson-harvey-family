@@ -1,9 +1,9 @@
 export const COLORS: Record<string, string> = {
-  shane: '#3b82f6',
-  molly: '#c084fc',
-  evey: '#f472b6',
-  jax: '#34d399',
-  family: '#c9a84c',
+  shane: '#4A90E2',
+  molly: '#B57BFF',
+  evey: '#FF6B9D',
+  jax: '#4CAF7D',
+  family: '#C4A050',
 }
 
 export const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
