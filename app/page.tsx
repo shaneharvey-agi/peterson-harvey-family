@@ -3,7 +3,6 @@ import { FamilyAvatars } from '@/components/layout/FamilyAvatars';
 import { BottomNav } from '@/components/layout/BottomNav';
 import { CalendarHeader } from '@/components/calendar/CalendarHeader';
 import { EventTimeline } from '@/components/calendar/EventTimeline';
-import { DinnerCard } from '@/components/calendar/DinnerCard';
 import { MessageCarousel } from '@/components/messages/MessageCarousel';
 
 export default function HomePage() {
@@ -23,7 +22,6 @@ export default function HomePage() {
         <FamilyAvatars />
         <CalendarHeader />
         <EventTimeline />
-        <DinnerCard />
         <MessageCarousel />
       </section>
 
