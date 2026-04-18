@@ -88,14 +88,14 @@ export function WeatherBadge({ temp, condition }: Props) {
         <ellipse cx="16" cy="16" rx="4" ry="3" fill="#FFFDE4" opacity="0.7" />
       </svg>
 
-      {/* Temperature overlay — brand blue with white halo for contrast */}
+      {/* Temperature overlay — dead-center on the sun */}
       <span
         style={{
           position: 'absolute',
-          top: 9,
-          left: 0,
-          right: 0,
-          textAlign: 'center',
+          inset: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
           fontSize: 12,
           fontWeight: 800,
           color: '#378ADD',
