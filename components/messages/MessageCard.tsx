@@ -5,6 +5,11 @@ import type { Message } from '@/lib/queries/messages';
 
 interface Props {
   message: Message;
+  /**
+   * Optional future-use hook for video/media previews. Accepted but not
+   * rendered in this pass.
+   */
+  mediaUrl?: string;
 }
 
 const LABEL_BY_TYPE: Record<Message['type'], string> = {
@@ -14,7 +19,7 @@ const LABEL_BY_TYPE: Record<Message['type'], string> = {
   meal: 'TONIGHT',
 };
 
-export function MessageCard({ message }: Props) {
+export function MessageCard({ message, mediaUrl: _mediaUrl }: Props) {
   const { type } = message;
 
   const labelColor =
@@ -22,7 +27,7 @@ export function MessageCard({ message }: Props) {
       ? tokens.gold
       : type === 'urgent'
       ? tokens.red
-      : 'rgba(255,255,255,0.55)';
+      : 'rgba(255,255,255,0.75)';
 
   const pulseClass =
     type === 'brief' ? 'mc-pulse-gold' : type === 'urgent' ? 'mc-pulse-red' : '';
@@ -33,6 +38,10 @@ export function MessageCard({ message }: Props) {
       : type === 'urgent'
       ? 'rgba(226,75,74,0.7)'
       : 'rgba(255,255,255,0.08)';
+
+  // For DMs, title is typically the sender's display name; bump to 13/700/white.
+  // For brief/urgent/meal, keep title as headline (12/bold).
+  const isSenderAsTitle = type === 'dm';
 
   return (
     <div
@@ -58,8 +67,8 @@ export function MessageCard({ message }: Props) {
       <div className="flex items-center gap-1.5">
         <Avatar message={message} />
         <span
-          className="text-[9px] font-extrabold tracking-[1px] uppercase"
-          style={{ color: labelColor }}
+          className="text-[11px] font-extrabold tracking-[1px] uppercase"
+          style={{ color: labelColor, fontWeight: 800 }}
         >
           {LABEL_BY_TYPE[type]}
         </span>
@@ -67,13 +76,21 @@ export function MessageCard({ message }: Props) {
 
       {/* Body */}
       <div className="min-w-0">
-        <div className="text-[12px] font-bold text-white leading-tight truncate">
+        <div
+          className="leading-tight truncate"
+          style={
+            isSenderAsTitle
+              ? { fontSize: 13, fontWeight: 700, color: '#FFFFFF' }
+              : { fontSize: 12, fontWeight: 700, color: '#FFFFFF' }
+          }
+        >
           {message.title}
         </div>
         <div
-          className="text-[10px] mt-0.5 leading-snug"
+          className="mt-0.5 leading-snug"
           style={{
-            color: 'rgba(255,255,255,0.6)',
+            fontSize: 12,
+            color: 'rgba(255,255,255,0.95)',
             display: '-webkit-box',
             WebkitLineClamp: 2,
             WebkitBoxOrient: 'vertical',

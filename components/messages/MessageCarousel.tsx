@@ -26,14 +26,20 @@ export function MessageCarousel() {
   return (
     <div className="pb-20">
       <div
-        className="-mx-4 overflow-x-auto scroll-px-4"
+        className="-mx-4 scroll-px-4"
         style={{
+          overflowX: 'auto',
+          overflowY: 'hidden',
           scrollSnapType: 'x mandatory',
           WebkitOverflowScrolling: 'touch',
           scrollbarWidth: 'none',
+          touchAction: 'pan-x',
         }}
       >
-        <div className="flex gap-2 px-4 pb-2" style={{ width: 'max-content' }}>
+        <div
+          className="flex gap-2 px-4 pb-2"
+          style={{ width: 'max-content', touchAction: 'pan-x' }}
+        >
           {messages.map((m) => (
             <MessageCard key={m.id} message={m} />
           ))}
@@ -65,7 +71,7 @@ export function MessageCarousel() {
                 width: active ? 14 : 4,
                 height: 3,
                 borderRadius: 2,
-                background: active ? '#C4A050' : 'rgba(255,255,255,0.22)',
+                background: active ? '#FFFFFF' : 'rgba(255,255,255,0.22)',
                 transition: 'all 200ms ease',
               }}
             />
