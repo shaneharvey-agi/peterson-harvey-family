@@ -1,8 +1,11 @@
 'use client';
 
+import { useState } from 'react';
 import { tokens } from '@/lib/design-tokens';
 
 export function TopStrip({ unreadMessages = 7 }: { unreadMessages?: number }) {
+  const [photoOk, setPhotoOk] = useState(true);
+
   return (
     <header
       className="sticky top-0 z-10"
@@ -19,15 +22,15 @@ export function TopStrip({ unreadMessages = 7 }: { unreadMessages?: number }) {
           <div
             className="flex items-center justify-center"
             style={{
-              width: 20,
-              height: 20,
-              borderRadius: 5,
+              width: 28,
+              height: 28,
+              borderRadius: 6,
               background: tokens.gold,
             }}
           >
             <span
               style={{
-                fontSize: 13,
+                fontSize: 18,
                 fontWeight: 800,
                 color: '#000',
                 lineHeight: 1,
@@ -37,11 +40,10 @@ export function TopStrip({ unreadMessages = 7 }: { unreadMessages?: number }) {
             </span>
           </div>
           <span
-            className="wordmark-breathe"
+            className="wordmark"
             style={{
-              fontSize: 14,
+              fontSize: 20,
               fontWeight: 800,
-              color: tokens.gold,
               letterSpacing: '0.3px',
               lineHeight: 1,
             }}
@@ -51,26 +53,30 @@ export function TopStrip({ unreadMessages = 7 }: { unreadMessages?: number }) {
         </div>
 
         {/* Right cluster */}
-        <div className="flex items-center" style={{ gap: 11 }}>
+        <div className="flex items-center" style={{ gap: 13 }}>
           {/* + button */}
           <button
             type="button"
             aria-label="Quick add"
             className="flex items-center justify-center"
             style={{
-              width: 28,
-              height: 28,
+              width: 32,
+              height: 32,
               borderRadius: 999,
-              background: 'rgba(196, 160, 80, 0.18)',
-              border: `1px solid rgba(196, 160, 80, 0.35)`,
-              color: tokens.gold,
-              fontSize: 18,
-              fontWeight: 600,
-              lineHeight: 1,
+              background: 'rgba(255, 255, 255, 0.08)',
+              border: `1px solid rgba(255, 255, 255, 0.25)`,
+              color: '#FFFFFF',
               padding: 0,
             }}
           >
-            +
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
+              <path
+                d="M7 1.5V12.5M1.5 7H12.5"
+                stroke="#FFFFFF"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+              />
+            </svg>
           </button>
 
           {/* Message icon */}
@@ -79,17 +85,20 @@ export function TopStrip({ unreadMessages = 7 }: { unreadMessages?: number }) {
             aria-label="Messages"
             className="relative flex items-center justify-center"
             style={{
-              width: 28,
-              height: 28,
+              width: 32,
+              height: 32,
               padding: 0,
               background: 'transparent',
               border: 'none',
             }}
           >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden>
               <path
                 d="M4 5.5C4 4.67 4.67 4 5.5 4h13c.83 0 1.5.67 1.5 1.5v10c0 .83-.67 1.5-1.5 1.5H9l-3.5 3v-3H5.5C4.67 17 4 16.33 4 15.5v-10z"
-                fill={tokens.gold}
+                stroke="#FFFFFF"
+                strokeWidth="1.5"
+                strokeLinejoin="round"
+                fill="none"
               />
             </svg>
             {unreadMessages > 0 && (
@@ -115,7 +124,7 @@ export function TopStrip({ unreadMessages = 7 }: { unreadMessages?: number }) {
             )}
           </button>
 
-          {/* Avatar + gear badge */}
+          {/* Avatar + 3-dot chat-bubble badge */}
           <button
             type="button"
             aria-label="Settings"
@@ -123,37 +132,61 @@ export function TopStrip({ unreadMessages = 7 }: { unreadMessages?: number }) {
             style={{
               width: 32,
               height: 32,
-              borderRadius: 999,
-              background: `linear-gradient(135deg, ${tokens.shane}, ${tokens.molly})`,
               padding: 0,
+              background: 'transparent',
               border: 'none',
               color: '#fff',
               fontSize: 12,
               fontWeight: 700,
             }}
           >
-            S
             <span
-              className="absolute flex items-center justify-center"
+              className="flex items-center justify-center"
               style={{
-                bottom: -2,
-                right: -2,
-                width: 14,
-                height: 14,
+                width: 32,
+                height: 32,
                 borderRadius: 999,
-                background: tokens.bg,
-                border: `1.5px solid ${tokens.bg}`,
+                overflow: 'hidden',
+                background: photoOk
+                  ? tokens.bg
+                  : `linear-gradient(135deg, ${tokens.shane}, ${tokens.molly})`,
               }}
             >
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
-                <circle cx="12" cy="12" r="3" fill={tokens.gold} />
-                <path
-                  d="M12 2v3M12 19v3M2 12h3M19 12h3M4.93 4.93l2.12 2.12M16.95 16.95l2.12 2.12M4.93 19.07l2.12-2.12M16.95 7.05l2.12-2.12"
-                  stroke={tokens.gold}
-                  strokeWidth="2"
-                  strokeLinecap="round"
+              {photoOk ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src="/avatars/shane.jpg"
+                  alt=""
+                  onError={() => setPhotoOk(false)}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                  }}
+                  draggable={false}
                 />
-              </svg>
+              ) : (
+                <span>S</span>
+              )}
+            </span>
+            <span
+              aria-hidden
+              className="absolute flex items-center justify-center"
+              style={{
+                bottom: -3,
+                right: -3,
+                width: 16,
+                height: 12,
+                borderRadius: 4,
+                background: '#FFFFFF',
+                border: `1.5px solid ${tokens.bg}`,
+                gap: 1.5,
+                padding: '0 2px',
+              }}
+            >
+              <span style={{ width: 2, height: 2, borderRadius: 1, background: '#07090F' }} />
+              <span style={{ width: 2, height: 2, borderRadius: 1, background: '#07090F' }} />
+              <span style={{ width: 2, height: 2, borderRadius: 1, background: '#07090F' }} />
             </span>
           </button>
         </div>

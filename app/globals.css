@@ -38,6 +38,19 @@ body {
 }
 .wordmark-breathe { animation: wordmarkBreathe 4s ease-in-out infinite; }
 
+@keyframes wordmarkShimmer {
+  0%   { background-position: -100% 0; }
+  100% { background-position: 200% 0; }
+}
+.wordmark {
+  background: linear-gradient(90deg, #C4A050 0%, #F5E1A8 50%, #C4A050 100%);
+  background-size: 200% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  animation: wordmarkShimmer 4s ease-in-out infinite;
+}
+
 @keyframes goldBorderBreathe {
   0%, 100% { border-color: rgba(196, 160, 80, 0.4); }
   50%      { border-color: rgba(196, 160, 80, 0.75); }
