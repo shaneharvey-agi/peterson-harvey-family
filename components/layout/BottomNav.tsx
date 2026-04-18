@@ -14,7 +14,7 @@ export function BottomNav({ active = 'home' }: { active?: Tab }) {
         backdropFilter: 'blur(12px)',
         WebkitBackdropFilter: 'blur(12px)',
         background: 'rgba(7, 9, 15, 0.95)',
-        borderTop: '0.5px solid rgba(196, 160, 80, 0.15)',
+        borderTop: '0.5px solid rgba(255, 255, 255, 0.10)',
         padding: '8px 14px 20px',
         paddingBottom: 'calc(20px + env(safe-area-inset-bottom))',
       }}
@@ -26,7 +26,12 @@ export function BottomNav({ active = 'home' }: { active?: Tab }) {
           <MOrb />
         </div>
         <NavItem label="Kitchen" active={active === 'kitchen'} icon={<KitchenIcon active={active === 'kitchen'} />} />
-        <NavItem label="Meals" active={active === 'meals'} icon={<MealsIcon size={28} />} />
+        <NavItem
+          label="Meals"
+          active={active === 'meals'}
+          icon={<MealsIcon size={34} />}
+          iconBoxSize={36}
+        />
       </div>
     </nav>
   );
@@ -36,10 +41,12 @@ function NavItem({
   label,
   active,
   icon,
+  iconBoxSize = 28,
 }: {
   label: string;
   active: boolean;
   icon: React.ReactNode;
+  iconBoxSize?: number;
 }) {
   return (
     <button
@@ -51,10 +58,10 @@ function NavItem({
         border: 'none',
         padding: '4px 6px',
         color: active ? tokens.gold : 'rgba(255, 255, 255, 0.55)',
-        minWidth: 48,
+        minWidth: Math.max(48, iconBoxSize + 12),
       }}
     >
-      <span style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <span style={{ width: iconBoxSize, height: iconBoxSize, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         {icon}
       </span>
       <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: 0.2, lineHeight: 1 }}>
