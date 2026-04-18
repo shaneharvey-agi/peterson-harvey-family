@@ -24,7 +24,7 @@ export function MessageCarousel() {
   }
 
   return (
-    <div className="pb-20">
+    <div>
       <div
         className="-mx-4 scroll-px-4"
         style={{
