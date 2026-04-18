@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { tokens } from '@/lib/design-tokens';
 
 export type CalendarView = 'day' | 'week' | 'month';
 
@@ -12,8 +11,8 @@ const OPTIONS: { value: CalendarView; label: string }[] = [
 ];
 
 /**
- * 3-button segmented control. State lives internally (per contract:
- * "lifted state stays internal (client state, no props)").
+ * 3-button segmented control. Visual-only — tabs are clickable-but-inert
+ * (internal state updates for press feedback; does not wire view switching).
  */
 export function DayWeekMonthToggle() {
   const [view, setView] = useState<CalendarView>('day');
@@ -26,8 +25,8 @@ export function DayWeekMonthToggle() {
         gap: 2,
         padding: 2,
         borderRadius: 8,
-        background: 'rgba(255,255,255,0.04)',
-        border: '1px solid rgba(196,160,80,0.15)',
+        background: 'rgba(255,255,255,0.08)',
+        border: 'none',
       }}
       role="tablist"
       aria-label="Calendar view"
@@ -49,8 +48,8 @@ export function DayWeekMonthToggle() {
               borderRadius: 6,
               border: 'none',
               cursor: 'pointer',
-              background: active ? tokens.gold : 'transparent',
-              color: active ? '#07090F' : 'rgba(255,255,255,0.55)',
+              background: active ? '#FFFFFF' : 'transparent',
+              color: active ? '#07090F' : 'rgba(255,255,255,0.6)',
               transition: 'background 120ms ease, color 120ms ease',
               fontFamily: 'inherit',
             }}

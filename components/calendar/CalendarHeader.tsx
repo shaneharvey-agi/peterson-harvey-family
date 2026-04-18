@@ -39,18 +39,20 @@ export function CalendarHeader() {
 
   return (
     <div className="flex justify-between items-center py-[10px] pb-3">
-      <div className="flex items-center gap-2 flex-1 min-w-0">
-        <span className="text-[14px] font-extrabold text-[#C4A050] tracking-[0.8px] whitespace-nowrap">
+      {/* Left zone: date */}
+      <div className="flex-1 min-w-0">
+        <span className="text-[14px] font-extrabold text-[#FFFFFF] tracking-[0.8px] whitespace-nowrap">
           {dateStr}
         </span>
-        <WeatherBadge temp={temp} condition={condition} />
-        {condition && (
-          <span className="text-[10px] text-white/50 font-medium capitalize">
-            {condition}
-          </span>
-        )}
       </div>
-      <DayWeekMonthToggle />
+      {/* Middle zone: weather icon (centered) */}
+      <div className="flex-1 flex justify-center">
+        <WeatherBadge temp={temp} condition={condition} />
+      </div>
+      {/* Right zone: toggle */}
+      <div className="flex-1 flex justify-end">
+        <DayWeekMonthToggle />
+      </div>
     </div>
   );
 }

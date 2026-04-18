@@ -8,12 +8,9 @@ interface Props {
 }
 
 /**
- * 30x30 gold sun badge with temperature inside.
- * Conditional overlays:
- *   clear  - none
- *   cloudy - drifting 3-ellipse cloud
- *   rainy  - cloud + raindrops
- *   snowy  - cloud + snowflakes
+ * 40x40 sun icon with gold/amber radial gradient, 8 short rays,
+ * temperature overlaid at the top of the sun, and conditional
+ * cloud/rain/snow overlays on the lower-right.
  */
 export function WeatherBadge({ temp, condition }: Props) {
   const displayTemp = temp == null ? '--' : `${temp}`;
@@ -25,25 +22,53 @@ export function WeatherBadge({ temp, condition }: Props) {
       aria-label={`${displayTemp} degrees, ${cond}`}
       style={{
         position: 'relative',
-        width: 30,
-        height: 30,
-        borderRadius: '50%',
-        background:
-          'radial-gradient(circle at 35% 30%, #E8C574 0%, #C4A050 60%, #8C7338 100%)',
-        boxShadow: '0 0 10px rgba(196,160,80,0.55)',
+        width: 40,
+        height: 40,
         display: 'inline-flex',
         alignItems: 'center',
         justifyContent: 'center',
         flexShrink: 0,
-        animation: 'wbSunGlow 3.5s ease-in-out infinite',
+        animation: 'wbCorona 3.5s ease-in-out infinite',
+        borderRadius: '50%',
       }}
     >
+      <svg width="40" height="40" viewBox="0 0 40 40" aria-hidden>
+        <defs>
+          <radialGradient id="wbSun" cx="35%" cy="30%" r="60%">
+            <stop offset="0%" stopColor="#F5E1A8" />
+            <stop offset="55%" stopColor="#E8C574" />
+            <stop offset="100%" stopColor="#8C7338" />
+          </radialGradient>
+        </defs>
+        {/* Rays */}
+        <g stroke="#E8C574" strokeWidth="1.6" strokeLinecap="round">
+          <line x1="20" y1="2"  x2="20" y2="6" />
+          <line x1="20" y1="34" x2="20" y2="38" />
+          <line x1="2"  y1="20" x2="6"  y2="20" />
+          <line x1="34" y1="20" x2="38" y2="20" />
+          <line x1="6"  y1="6"  x2="9"  y2="9" />
+          <line x1="31" y1="31" x2="34" y2="34" />
+          <line x1="6"  y1="34" x2="9"  y2="31" />
+          <line x1="31" y1="9"  x2="34" y2="6" />
+        </g>
+        {/* Sun body */}
+        <circle cx="20" cy="20" r="12" fill="url(#wbSun)" />
+      </svg>
+
+      {/* Temperature overlay — top of the sun, bold white with shadow */}
       <span
         style={{
-          fontSize: 10,
+          position: 'absolute',
+          top: 9,
+          left: 0,
+          right: 0,
+          textAlign: 'center',
+          fontSize: 12,
           fontWeight: 800,
-          color: '#07090F',
+          color: '#FFFFFF',
+          textShadow: '0 1px 2px rgba(0,0,0,0.65)',
           lineHeight: 1,
+          pointerEvents: 'none',
           letterSpacing: '-0.2px',
         }}
       >
@@ -55,49 +80,23 @@ export function WeatherBadge({ temp, condition }: Props) {
       {cond === 'snowy' && <SnowOverlay />}
 
       <style jsx>{`
-        @keyframes wbSunGlow {
-          0%,
-          100% {
-            box-shadow: 0 0 10px rgba(196, 160, 80, 0.55);
-          }
-          50% {
-            box-shadow: 0 0 14px rgba(196, 160, 80, 0.8);
-          }
+        @keyframes wbCorona {
+          0%, 100% { box-shadow: 0 0 10px rgba(196, 160, 80, 0.45); }
+          50%      { box-shadow: 0 0 14px rgba(196, 160, 80, 0.65); }
         }
         @keyframes wbCloudDrift {
-          0%,
-          100% {
-            transform: translateX(0);
-          }
-          50% {
-            transform: translateX(3px);
-          }
+          0%, 100% { transform: translateX(0); }
+          50%      { transform: translateX(2px); }
         }
         @keyframes wbRainFall {
-          0% {
-            transform: translateY(-4px);
-            opacity: 0;
-          }
-          30% {
-            opacity: 1;
-          }
-          100% {
-            transform: translateY(10px);
-            opacity: 0;
-          }
+          0%   { transform: translateY(-3px); opacity: 0; }
+          30%  { opacity: 1; }
+          100% { transform: translateY(8px); opacity: 0; }
         }
         @keyframes wbSnowFall {
-          0% {
-            transform: translateY(-3px);
-            opacity: 0;
-          }
-          30% {
-            opacity: 1;
-          }
-          100% {
-            transform: translateY(10px);
-            opacity: 0;
-          }
+          0%   { transform: translateY(-3px); opacity: 0; }
+          30%  { opacity: 1; }
+          100% { transform: translateY(8px); opacity: 0; }
         }
       `}</style>
     </div>
@@ -107,21 +106,21 @@ export function WeatherBadge({ temp, condition }: Props) {
 function CloudOverlay() {
   return (
     <svg
-      width="24"
-      height="14"
-      viewBox="0 0 24 14"
+      width="22"
+      height="12"
+      viewBox="0 0 22 12"
       style={{
         position: 'absolute',
-        top: 10,
-        left: -4,
+        bottom: 2,
+        right: -4,
         pointerEvents: 'none',
         animation: 'wbCloudDrift 6s ease-in-out infinite',
       }}
       aria-hidden
     >
-      <ellipse cx="8" cy="9" rx="6" ry="4" fill="#D8DDE5" />
-      <ellipse cx="15" cy="7" rx="7" ry="4.5" fill="#E8ECF1" />
-      <ellipse cx="19" cy="10" rx="5" ry="3.5" fill="#C8CED7" />
+      <ellipse cx="7" cy="8" rx="5" ry="3.5" fill="#D8DDE5" />
+      <ellipse cx="13" cy="6" rx="6" ry="4" fill="#E8ECF1" />
+      <ellipse cx="17" cy="9" rx="4" ry="3" fill="#C8CED7" />
     </svg>
   );
 }
@@ -129,47 +128,23 @@ function CloudOverlay() {
 function RainOverlay() {
   return (
     <svg
-      width="20"
-      height="12"
-      viewBox="0 0 20 12"
+      width="16"
+      height="10"
+      viewBox="0 0 16 10"
       style={{
         position: 'absolute',
-        top: 20,
-        left: 4,
+        bottom: -4,
+        right: 0,
         pointerEvents: 'none',
       }}
       aria-hidden
     >
-      <line
-        x1="4"
-        y1="0"
-        x2="3"
-        y2="4"
-        stroke="#6FB0E6"
-        strokeWidth="1.2"
-        strokeLinecap="round"
-        style={{ animation: 'wbRainFall 1.1s linear infinite', animationDelay: '0s' }}
-      />
-      <line
-        x1="10"
-        y1="0"
-        x2="9"
-        y2="4"
-        stroke="#6FB0E6"
-        strokeWidth="1.2"
-        strokeLinecap="round"
-        style={{ animation: 'wbRainFall 1.1s linear infinite', animationDelay: '0.35s' }}
-      />
-      <line
-        x1="15"
-        y1="0"
-        x2="14"
-        y2="4"
-        stroke="#6FB0E6"
-        strokeWidth="1.2"
-        strokeLinecap="round"
-        style={{ animation: 'wbRainFall 1.1s linear infinite', animationDelay: '0.7s' }}
-      />
+      <line x1="3" y1="0" x2="2" y2="4" stroke="#6FB0E6" strokeWidth="1.1" strokeLinecap="round"
+        style={{ animation: 'wbRainFall 1.1s linear infinite', animationDelay: '0s' }} />
+      <line x1="8" y1="0" x2="7" y2="4" stroke="#6FB0E6" strokeWidth="1.1" strokeLinecap="round"
+        style={{ animation: 'wbRainFall 1.1s linear infinite', animationDelay: '0.35s' }} />
+      <line x1="13" y1="0" x2="12" y2="4" stroke="#6FB0E6" strokeWidth="1.1" strokeLinecap="round"
+        style={{ animation: 'wbRainFall 1.1s linear infinite', animationDelay: '0.7s' }} />
     </svg>
   );
 }
@@ -177,38 +152,23 @@ function RainOverlay() {
 function SnowOverlay() {
   return (
     <svg
-      width="20"
-      height="12"
-      viewBox="0 0 20 12"
+      width="16"
+      height="10"
+      viewBox="0 0 16 10"
       style={{
         position: 'absolute',
-        top: 20,
-        left: 4,
+        bottom: -4,
+        right: 0,
         pointerEvents: 'none',
       }}
       aria-hidden
     >
-      <circle
-        cx="4"
-        cy="2"
-        r="1.1"
-        fill="#F3F7FC"
-        style={{ animation: 'wbSnowFall 1.6s linear infinite', animationDelay: '0s' }}
-      />
-      <circle
-        cx="10"
-        cy="2"
-        r="1.1"
-        fill="#F3F7FC"
-        style={{ animation: 'wbSnowFall 1.6s linear infinite', animationDelay: '0.55s' }}
-      />
-      <circle
-        cx="15"
-        cy="2"
-        r="1.1"
-        fill="#F3F7FC"
-        style={{ animation: 'wbSnowFall 1.6s linear infinite', animationDelay: '1.1s' }}
-      />
+      <circle cx="3" cy="2" r="1" fill="#F3F7FC"
+        style={{ animation: 'wbSnowFall 1.6s linear infinite', animationDelay: '0s' }} />
+      <circle cx="8" cy="2" r="1" fill="#F3F7FC"
+        style={{ animation: 'wbSnowFall 1.6s linear infinite', animationDelay: '0.55s' }} />
+      <circle cx="13" cy="2" r="1" fill="#F3F7FC"
+        style={{ animation: 'wbSnowFall 1.6s linear infinite', animationDelay: '1.1s' }} />
     </svg>
   );
 }
