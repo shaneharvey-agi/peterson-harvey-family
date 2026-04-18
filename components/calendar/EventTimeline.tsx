@@ -139,9 +139,18 @@ function formatShort(raw: string): string {
 
 function EventRow({ ev }: { ev: TimelineEvent }) {
   const family = isFamilyEvent(ev);
+  // Show start–end when both present; else just start. Keep it tight so it
+  // fits the 40px gutter (e.g. "7:30a" / "3:15–4:30p").
+  const timeLabel = ev.endTime
+    ? `${stripSuffixIfSameHalf(ev.time, ev.endTime)}–${ev.endTime}`
+    : ev.time;
+
   return (
-    <div
-      className="flex items-center gap-2.5 rounded-md"
+    <Link
+      href={`/events/${ev.id}`}
+      prefetch={false}
+      aria-label={`Edit ${ev.title}`}
+      className="flex items-center gap-2.5 rounded-md no-underline"
       style={{
         background: 'rgba(255,255,255,0.04)',
         padding: '10px 10px',
@@ -149,10 +158,14 @@ function EventRow({ ev }: { ev: TimelineEvent }) {
       }}
     >
       <span
-        className="text-[10px] font-semibold"
-        style={{ color: 'rgba(255,255,255,0.7)', minWidth: 40 }}
+        className="text-[10px] font-semibold shrink-0"
+        style={{
+          color: 'rgba(255,255,255,0.7)',
+          minWidth: 54,
+          lineHeight: 1.1,
+        }}
       >
-        {ev.time}
+        {timeLabel}
       </span>
       {family ? <FamilyIcon /> : <PersonIcon member={ev.member} />}
       <div className="flex-1 min-w-0">
@@ -171,8 +184,21 @@ function EventRow({ ev }: { ev: TimelineEvent }) {
           </div>
         )}
       </div>
-    </div>
+    </Link>
   );
+}
+
+/**
+ * When both times share the same am/pm suffix, drop it from the start
+ * so "3:15p–4:30p" renders as "3:15–4:30p". Cross-meridiem keeps both.
+ */
+function stripSuffixIfSameHalf(start: string, end: string): string {
+  const startSuf = start.slice(-1);
+  const endSuf = end.slice(-1);
+  if ((startSuf === 'a' || startSuf === 'p') && startSuf === endSuf) {
+    return start.slice(0, -1);
+  }
+  return start;
 }
 
 function PersonIcon({ member }: { member: FamilyMember }) {

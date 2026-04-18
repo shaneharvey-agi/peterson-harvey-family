@@ -20,6 +20,7 @@ export interface Event {
   title: string
   date: string
   time: string | null
+  end_time: string | null
   who: string
   address: string
   notes: string
