@@ -1,7 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { tokens, type FamilyMember, familyBg, familyColor, familyText } from '@/lib/design-tokens';
+import { parseMemberFilter } from '@/lib/events/filter';
 
 type AvatarMember = {
   member: FamilyMember;
@@ -16,6 +18,21 @@ const DEFAULT_MEMBERS: AvatarMember[] = [
 ];
 
 export function FamilyAvatars({ members = DEFAULT_MEMBERS }: { members?: AvatarMember[] }) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const active = parseMemberFilter(searchParams?.get('who'));
+
+  const toggleFilter = (member: FamilyMember) => {
+    const params = new URLSearchParams(searchParams?.toString() ?? '');
+    if (active === member) {
+      params.delete('who');
+    } else {
+      params.set('who', member);
+    }
+    const qs = params.toString();
+    router.replace(qs ? `/?${qs}` : '/', { scroll: false });
+  };
+
   return (
     <div
       className="flex items-center"
@@ -27,6 +44,8 @@ export function FamilyAvatars({ members = DEFAULT_MEMBERS }: { members?: AvatarM
           member={member}
           letter={letter}
           unread={unread}
+          isActive={active === member}
+          onToggle={() => toggleFilter(member)}
         />
       ))}
     </div>
@@ -37,17 +56,27 @@ function AvatarButton({
   member,
   letter,
   unread,
+  isActive,
+  onToggle,
 }: {
   member: FamilyMember;
   letter: string;
   unread: number;
+  isActive: boolean;
+  onToggle: () => void;
 }) {
   const [photoOk, setPhotoOk] = useState(true);
 
   return (
     <button
       type="button"
-      aria-label={`${member} messages`}
+      onClick={onToggle}
+      aria-label={
+        isActive
+          ? `Showing only ${member}. Tap to show family.`
+          : `Show only ${member}'s calendar`
+      }
+      aria-pressed={isActive}
       className="relative flex items-center justify-center"
       style={{
         width: 50,
@@ -55,6 +84,9 @@ function AvatarButton({
         padding: 0,
         background: 'transparent',
         border: 'none',
+        opacity: isActive ? 1 : 0.92,
+        transform: isActive ? 'scale(1.06)' : 'scale(1)',
+        transition: 'transform 180ms ease, opacity 180ms ease',
       }}
     >
       <span
@@ -64,8 +96,11 @@ function AvatarButton({
           height: 50,
           borderRadius: '50%',
           background: familyBg(member),
-          border: `2.5px solid ${familyColor(member)}`,
+          border: `${isActive ? 3.5 : 2.5}px solid ${familyColor(member)}`,
           overflow: 'hidden',
+          boxShadow: isActive
+            ? `0 0 0 2px ${tokens.bg}, 0 0 10px ${familyColor(member)}80`
+            : 'none',
         }}
       >
         {photoOk ? (

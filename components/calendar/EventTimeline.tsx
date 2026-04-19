@@ -1,10 +1,16 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { tokens, familyColor, type FamilyMember } from '@/lib/design-tokens';
 import { fetchTodayEvents, type TimelineEvent } from '@/lib/queries/events';
 import { fetchTonightDinner, type DinnerPlan } from '@/lib/queries/dinner';
+import {
+  filterByMember,
+  parseMemberFilter,
+  type MemberFilter,
+} from '@/lib/events/filter';
 
 /**
  * Normalize various time strings to minutes-of-day for comparison.
@@ -51,6 +57,10 @@ export function EventTimeline() {
   const [events, setEvents] = useState<TimelineEvent[] | null>(null);
   const [dinner, setDinner] = useState<DinnerPlan | null>(null);
 
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const memberFilter: MemberFilter = parseMemberFilter(searchParams?.get('who'));
+
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -64,15 +74,24 @@ export function EventTimeline() {
     };
   }, []);
 
-  if (events === null) {
+  const memberFilteredEvents = useMemo(
+    () => (events ? filterByMember(events, memberFilter) : null),
+    [events, memberFilter],
+  );
+
+  if (events === null || memberFilteredEvents === null) {
     return <div className="h-[120px]" aria-hidden />;
   }
 
+  // When a specific member is selected, suppress the Dinner row too —
+  // it's a household plan, not personally owned.
+  const dinnerVisible = memberFilter === 'family' ? dinner : null;
+
   // Dinner dedup: if an event matches /dinner/i in title AND time matches
   // dinner.scheduledTime, suppress it (the dinner row will replace it).
-  const dinnerMinutes = dinner ? timeToMinutes(dinner.scheduledTime) : null;
-  const filtered = events.filter((ev) => {
-    if (!dinner || dinnerMinutes == null) return true;
+  const dinnerMinutes = dinnerVisible ? timeToMinutes(dinnerVisible.scheduledTime) : null;
+  const filtered = memberFilteredEvents.filter((ev) => {
+    if (!dinnerVisible || dinnerMinutes == null) return true;
     if (!/dinner/i.test(ev.title)) return true;
     const evMinutes = timeToMinutes(ev.time);
     return evMinutes !== dinnerMinutes;
@@ -89,8 +108,8 @@ export function EventTimeline() {
     ev,
     minutes: timeToMinutes(ev.time),
   }));
-  if (dinner) {
-    rows.push({ kind: 'dinner' as const, plan: dinner, minutes: dinnerMinutes });
+  if (dinnerVisible) {
+    rows.push({ kind: 'dinner' as const, plan: dinnerVisible, minutes: dinnerMinutes });
   }
   // Stable sort by minutes; rows with null minutes stay in original order at bottom.
   rows.sort((a, b) => {
@@ -100,24 +119,73 @@ export function EventTimeline() {
     return a.minutes - b.minutes;
   });
 
-  if (rows.length === 0) {
-    return (
-      <div className="text-[11px] text-white/40 py-4 text-center">
-        Nothing on the calendar today.
-      </div>
-    );
-  }
+  const clearFilter = () => {
+    const params = new URLSearchParams(searchParams?.toString() ?? '');
+    params.delete('who');
+    const qs = params.toString();
+    router.replace(qs ? `/?${qs}` : '/', { scroll: false });
+  };
 
   return (
     <div className="flex flex-col gap-2">
-      {rows.map((row) =>
-        row.kind === 'event' ? (
-          <EventRow key={`ev-${row.ev.id}`} ev={row.ev} />
-        ) : (
-          <DinnerRow key={`dn-${row.plan.id}`} plan={row.plan} />
-        ),
+      {memberFilter !== 'family' && (
+        <FilterPill member={memberFilter} onClear={clearFilter} />
+      )}
+      {rows.length === 0 ? (
+        <div className="text-[11px] text-white/40 py-4 text-center">
+          {memberFilter === 'family'
+            ? 'Nothing on the calendar today.'
+            : `Nothing on ${capitalize(memberFilter)}'s calendar today.`}
+        </div>
+      ) : (
+        rows.map((row) =>
+          row.kind === 'event' ? (
+            <EventRow key={`ev-${row.ev.id}`} ev={row.ev} />
+          ) : (
+            <DinnerRow key={`dn-${row.plan.id}`} plan={row.plan} />
+          ),
+        )
       )}
     </div>
+  );
+}
+
+function capitalize(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+/* ─────────── Filter pill ─────────── */
+
+function FilterPill({
+  member,
+  onClear,
+}: {
+  member: FamilyMember;
+  onClear: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClear}
+      aria-label={`Showing only ${member}. Tap to show family.`}
+      className="flex items-center justify-between rounded-md"
+      style={{
+        padding: '8px 12px',
+        background: `${familyColor(member)}1F`,
+        border: `1px solid ${familyColor(member)}66`,
+        color: '#FFFFFF',
+      }}
+    >
+      <span className="text-[12px] font-semibold">
+        Viewing {capitalize(member)} only
+      </span>
+      <span
+        className="text-[10px] font-semibold uppercase tracking-[1px]"
+        style={{ color: 'rgba(255,255,255,0.6)' }}
+      >
+        Show family ×
+      </span>
+    </button>
   );
 }
 
