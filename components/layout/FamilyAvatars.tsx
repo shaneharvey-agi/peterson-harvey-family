@@ -12,6 +12,7 @@ type AvatarMember = {
 };
 
 const DEFAULT_MEMBERS: AvatarMember[] = [
+  { member: 'shane', letter: 'S', unread: 0 },
   { member: 'molly', letter: 'M', unread: 2 },
   { member: 'evey',  letter: 'E', unread: 1 },
   { member: 'jax',   letter: 'J', unread: 0 },
@@ -35,19 +36,31 @@ export function FamilyAvatars({ members = DEFAULT_MEMBERS }: { members?: AvatarM
 
   return (
     <div
-      className="flex items-center"
-      style={{ gap: 14, padding: '8px 0 12px' }}
+      className="-mx-4"
+      style={{
+        overflowX: 'auto',
+        overflowY: 'hidden',
+        WebkitOverflowScrolling: 'touch',
+        scrollbarWidth: 'none',
+        touchAction: 'pan-x',
+        padding: '8px 0 12px',
+      }}
     >
-      {members.map(({ member, letter, unread = 0 }) => (
-        <AvatarButton
-          key={member}
-          member={member}
-          letter={letter}
-          unread={unread}
-          isActive={active === member}
-          onToggle={() => toggleFilter(member)}
-        />
-      ))}
+      <div
+        className="flex items-center px-4"
+        style={{ gap: 14, width: 'max-content' }}
+      >
+        {members.map(({ member, letter, unread = 0 }) => (
+          <AvatarButton
+            key={member}
+            member={member}
+            letter={letter}
+            unread={unread}
+            isActive={active === member}
+            onToggle={() => toggleFilter(member)}
+          />
+        ))}
+      </div>
     </div>
   );
 }
