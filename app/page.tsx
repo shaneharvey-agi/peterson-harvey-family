@@ -42,9 +42,15 @@ export default function HomePage() {
           width: '100%',
           maxWidth: 393,
           zIndex: 5,
+          // Tighter fade zone (top 30% vs top 35%) + full-opacity body
+          // so busy rows (dinner hero) don't bleed through.
           background:
-            'linear-gradient(to top, rgba(7,9,15,0.98) 0%, rgba(7,9,15,0.94) 65%, rgba(7,9,15,0) 100%)',
-          paddingTop: 20,
+            'linear-gradient(to top, rgba(7,9,15,1) 0%, rgba(7,9,15,1) 70%, rgba(7,9,15,0.7) 90%, rgba(7,9,15,0) 100%)',
+          // Blur whatever is behind the strip so the dinner card's
+          // recipe photo + gold pulse doesn't muddle the fade zone.
+          backdropFilter: 'blur(14px) saturate(1.1)',
+          WebkitBackdropFilter: 'blur(14px) saturate(1.1)',
+          paddingTop: 16,
           paddingBottom: 6,
           pointerEvents: 'auto',
         }}
