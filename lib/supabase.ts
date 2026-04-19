@@ -66,3 +66,14 @@ export interface NotificationRow {
   read_at: string | null
   created_at: string
 }
+
+export interface ChoreRow {
+  id: number
+  assignee: string
+  title: string
+  due_date: string | null
+  done_at: string | null
+  created_by: string | null
+  notes: string | null
+  created_at: string
+}
