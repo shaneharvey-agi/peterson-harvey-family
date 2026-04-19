@@ -271,6 +271,9 @@ function stripSuffixIfSameHalf(start: string, end: string): string {
 
 function PersonIcon({ member }: { member: FamilyMember }) {
   const letter = member.charAt(0).toUpperCase();
+  const [photoOk, setPhotoOk] = useState(true);
+  const accent = familyColor(member);
+
   return (
     <span
       aria-hidden
@@ -279,14 +282,32 @@ function PersonIcon({ member }: { member: FamilyMember }) {
         width: 36,
         height: 36,
         borderRadius: '50%',
-        background: familyColor(member),
+        background: photoOk ? '#0D1119' : accent,
+        border: `2px solid ${accent}`,
+        overflow: 'hidden',
         color: '#FFFFFF',
         fontSize: 14,
         fontWeight: 800,
         lineHeight: 1,
       }}
     >
-      {letter}
+      {photoOk ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={`/avatars/${member}.jpg`}
+          alt=""
+          onError={() => setPhotoOk(false)}
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            pointerEvents: 'none',
+          }}
+          draggable={false}
+        />
+      ) : (
+        letter
+      )}
     </span>
   );
 }
