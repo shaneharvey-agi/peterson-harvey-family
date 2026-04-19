@@ -34,3 +34,15 @@ export interface Todo {
   cat: string
   created_at: string
 }
+
+export interface NotificationRow {
+  id: number
+  kind: string
+  severity: string
+  title: string
+  body: string | null
+  action_url: string | null
+  action_label: string | null
+  read_at: string | null
+  created_at: string
+}

@@ -1,10 +1,23 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { tokens } from '@/lib/design-tokens';
+import { fetchUnreadCount } from '@/lib/queries/notifications';
 
 export function TopStrip({ unreadMessages = 7 }: { unreadMessages?: number }) {
-  const [photoOk, setPhotoOk] = useState(true);
+  const [unreadNotifs, setUnreadNotifs] = useState<number>(0);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const n = await fetchUnreadCount();
+      if (alive) setUnreadNotifs(n);
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   return (
     <header
@@ -124,71 +137,62 @@ export function TopStrip({ unreadMessages = 7 }: { unreadMessages?: number }) {
             )}
           </button>
 
-          {/* Avatar + 3-dot chat-bubble badge */}
-          <button
-            type="button"
-            aria-label="Settings"
-            className="relative flex items-center justify-center"
+          {/* Notifications bell — Mikayla's proactive feed */}
+          <Link
+            href="/notifications"
+            prefetch={false}
+            aria-label={
+              unreadNotifs > 0
+                ? `Notifications, ${unreadNotifs} unread`
+                : 'Notifications'
+            }
+            className="relative flex items-center justify-center no-underline"
             style={{
               width: 32,
               height: 32,
               padding: 0,
               background: 'transparent',
               border: 'none',
-              color: '#fff',
-              fontSize: 12,
-              fontWeight: 700,
             }}
           >
-            <span
-              className="flex items-center justify-center"
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: 999,
-                overflow: 'hidden',
-                background: photoOk
-                  ? tokens.bg
-                  : `linear-gradient(135deg, ${tokens.shane}, ${tokens.molly})`,
-              }}
-            >
-              {photoOk ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src="/avatars/shane.jpg"
-                  alt=""
-                  onError={() => setPhotoOk(false)}
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                  }}
-                  draggable={false}
-                />
-              ) : (
-                <span>S</span>
-              )}
-            </span>
-            <span
-              aria-hidden
-              className="absolute flex items-center justify-center"
-              style={{
-                bottom: -3,
-                right: -3,
-                width: 16,
-                height: 12,
-                borderRadius: 4,
-                background: '#FFFFFF',
-                border: `1.5px solid ${tokens.bg}`,
-                gap: 1.5,
-                padding: '0 2px',
-              }}
-            >
-              <span style={{ width: 2, height: 2, borderRadius: 1, background: '#07090F' }} />
-              <span style={{ width: 2, height: 2, borderRadius: 1, background: '#07090F' }} />
-              <span style={{ width: 2, height: 2, borderRadius: 1, background: '#07090F' }} />
-            </span>
-          </button>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <path
+                d="M6 9a6 6 0 0 1 12 0c0 4 1.5 5.5 2 6.5H4c.5-1 2-2.5 2-6.5z"
+                stroke="#FFFFFF"
+                strokeWidth="1.6"
+                strokeLinejoin="round"
+                fill="none"
+              />
+              <path
+                d="M10 18a2 2 0 0 0 4 0"
+                stroke="#FFFFFF"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                fill="none"
+              />
+            </svg>
+            {unreadNotifs > 0 && (
+              <span
+                className="pulse-gold absolute flex items-center justify-center"
+                style={{
+                  top: -2,
+                  right: -4,
+                  minWidth: 16,
+                  height: 16,
+                  padding: '0 4px',
+                  borderRadius: 999,
+                  background: tokens.gold,
+                  color: '#07090F',
+                  fontSize: 9,
+                  fontWeight: 800,
+                  border: `1.5px solid ${tokens.bg}`,
+                  lineHeight: 1,
+                }}
+              >
+                {unreadNotifs}
+              </span>
+            )}
+          </Link>
         </div>
       </div>
     </header>
