@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { TopStrip } from '@/components/layout/TopStrip';
 import { FamilyAvatars } from '@/components/layout/FamilyAvatars';
 import { BottomNav } from '@/components/layout/BottomNav';
@@ -19,9 +20,16 @@ export default function HomePage() {
       <TopStrip unreadMessages={7} />
 
       <section className="px-4">
-        <FamilyAvatars />
+        {/* Suspense boundaries: FamilyAvatars + EventTimeline use
+            useSearchParams(), which needs this wrapper so the page
+            can still prerender statically. */}
+        <Suspense fallback={<div style={{ height: 74 }} aria-hidden />}>
+          <FamilyAvatars />
+        </Suspense>
         <CalendarHeader />
-        <EventTimeline />
+        <Suspense fallback={<div style={{ height: 120 }} aria-hidden />}>
+          <EventTimeline />
+        </Suspense>
       </section>
 
       <div
