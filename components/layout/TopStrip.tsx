@@ -4,20 +4,28 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { tokens } from '@/lib/design-tokens';
 import { fetchUnreadCount } from '@/lib/queries/notifications';
+import { fetchTotalUnreadMessages } from '@/lib/queries/chatMessages';
 
-export function TopStrip({ unreadMessages = 7 }: { unreadMessages?: number }) {
+export function TopStrip({ unreadMessages }: { unreadMessages?: number }) {
   const [unreadNotifs, setUnreadNotifs] = useState<number>(0);
+  const [unreadMsgs, setUnreadMsgs] = useState<number>(unreadMessages ?? 0);
 
   useEffect(() => {
     let alive = true;
     (async () => {
-      const n = await fetchUnreadCount();
-      if (alive) setUnreadNotifs(n);
+      const [n, m] = await Promise.all([
+        fetchUnreadCount(),
+        unreadMessages === undefined ? fetchTotalUnreadMessages() : Promise.resolve(unreadMessages),
+      ]);
+      if (alive) {
+        setUnreadNotifs(n);
+        setUnreadMsgs(m);
+      }
     })();
     return () => {
       alive = false;
     };
-  }, []);
+  }, [unreadMessages]);
 
   return (
     <header
@@ -92,11 +100,16 @@ export function TopStrip({ unreadMessages = 7 }: { unreadMessages?: number }) {
             </svg>
           </button>
 
-          {/* Message icon */}
-          <button
-            type="button"
-            aria-label="Messages"
-            className="relative flex items-center justify-center"
+          {/* Messages — jumps to the inbox */}
+          <Link
+            href="/messages"
+            prefetch={false}
+            aria-label={
+              unreadMsgs > 0
+                ? `Messages, ${unreadMsgs} unread`
+                : 'Messages'
+            }
+            className="relative flex items-center justify-center no-underline"
             style={{
               width: 32,
               height: 32,
@@ -114,7 +127,7 @@ export function TopStrip({ unreadMessages = 7 }: { unreadMessages?: number }) {
                 fill="none"
               />
             </svg>
-            {unreadMessages > 0 && (
+            {unreadMsgs > 0 && (
               <span
                 className="pulse-red absolute flex items-center justify-center"
                 style={{
@@ -132,10 +145,10 @@ export function TopStrip({ unreadMessages = 7 }: { unreadMessages?: number }) {
                   lineHeight: 1,
                 }}
               >
-                {unreadMessages}
+                {unreadMsgs}
               </span>
             )}
-          </button>
+          </Link>
 
           {/* Notifications bell — Mikayla's proactive feed */}
           <Link

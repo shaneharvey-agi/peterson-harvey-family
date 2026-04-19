@@ -77,3 +77,12 @@ export interface ChoreRow {
   notes: string | null
   created_at: string
 }
+
+export interface ChatMessageRow {
+  id: number
+  thread_key: string
+  sender: string
+  body: string
+  read_at: string | null
+  created_at: string
+}

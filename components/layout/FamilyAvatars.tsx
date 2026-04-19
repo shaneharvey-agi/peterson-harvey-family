@@ -62,7 +62,7 @@ export function FamilyAvatars({ members = DEFAULT_MEMBERS }: { members?: AvatarM
         router.push(`/chores?for=${member}&add=1`);
         break;
       case 'message':
-        // Pending /messages route — wired when that screen lands.
+        router.push(`/messages/${member}`);
         break;
       case 'remind':
         showToast(`I\u2019ll nudge you about ${capitalize(member)}.`);

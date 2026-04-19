@@ -126,11 +126,9 @@ export function AvatarActionSheet({
         <div className="flex flex-col" style={{ padding: '4px 8px 8px' }}>
           <ActionRow
             label="Message"
-            hint="SMS-style thread"
+            hint={`Thread with ${NAMES[member]}`}
             icon={<MessageIcon color={accent} />}
             onClick={() => onAction('message')}
-            disabled
-            disabledHint="Coming soon"
           />
           <ActionRow
             label="Add chore"

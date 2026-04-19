@@ -1,8 +1,19 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { MessageCard } from './MessageCard';
 import { fetchMessages, type Message } from '@/lib/queries/messages';
+
+function destinationFor(m: Message): string | null {
+  // Tap-through: each home-feed card lands in the right conversation.
+  // Brief = Mikayla's thread. Urgent = family (or the named member).
+  // DM = that member's thread. Meal has no thread yet.
+  if (m.type === 'brief') return '/messages/mikayla';
+  if (m.type === 'urgent') return `/messages/${m.from ?? 'family'}`;
+  if (m.type === 'dm' && m.from) return `/messages/${m.from}`;
+  return null;
+}
 
 export function MessageCarousel() {
   const [messages, setMessages] = useState<Message[] | null>(null);
@@ -40,9 +51,26 @@ export function MessageCarousel() {
           className="flex gap-2 px-4 pb-2"
           style={{ width: 'max-content', touchAction: 'pan-x' }}
         >
-          {messages.map((m) => (
-            <MessageCard key={m.id} message={m} />
-          ))}
+          {messages.map((m) => {
+            const href = destinationFor(m);
+            const card = <MessageCard message={m} />;
+            return href ? (
+              <Link
+                key={m.id}
+                href={href}
+                prefetch={false}
+                className="no-underline"
+                style={{ color: 'inherit', flexShrink: 0 }}
+                aria-label={`Open ${m.title}`}
+              >
+                {card}
+              </Link>
+            ) : (
+              <div key={m.id} style={{ flexShrink: 0 }}>
+                {card}
+              </div>
+            );
+          })}
           {/* 80px peek card */}
           <div
             aria-hidden
