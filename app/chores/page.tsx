@@ -19,12 +19,27 @@ const MEMBERS: { member: FamilyMember; letter: string }[] = [
   { member: 'shane', letter: 'S' },
 ];
 
+function isFamilyMember(v: string | null): v is FamilyMember {
+  return v === 'shane' || v === 'molly' || v === 'evey' || v === 'jax';
+}
+
 export default function ChoresPage() {
   const [items, setItems] = useState<Chore[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const [prefillAssignee, setPrefillAssignee] = useState<FamilyMember | null>(null);
 
   useEffect(() => {
+    // Read URL params client-side so the page stays SSG-safe (no
+    // useSearchParams / Suspense requirement). Supports ?for=<member>&add=1
+    // from the avatar long-press "Add chore" action.
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const forParam = params.get('for');
+      const addParam = params.get('add');
+      if (isFamilyMember(forParam)) setPrefillAssignee(forParam);
+      if (addParam === '1') setAddOpen(true);
+    }
     let alive = true;
     (async () => {
       const list = await fetchChores();
@@ -131,7 +146,13 @@ export default function ChoresPage() {
       </header>
 
       <div className="px-4 pb-24 pt-2 flex flex-col gap-3">
-        {addOpen && <AddChoreForm onSubmit={handleAdd} busy={busy} />}
+        {addOpen && (
+          <AddChoreForm
+            onSubmit={handleAdd}
+            busy={busy}
+            initialAssignee={prefillAssignee ?? 'jax'}
+          />
+        )}
 
         {items === null ? (
           <div className="pt-10 text-center text-white/40">Loading…</div>
@@ -170,6 +191,7 @@ export default function ChoresPage() {
 function AddChoreForm({
   onSubmit,
   busy,
+  initialAssignee,
 }: {
   onSubmit: (v: {
     assignee: FamilyMember;
@@ -177,8 +199,9 @@ function AddChoreForm({
     dueDate: string | null;
   }) => void;
   busy: boolean;
+  initialAssignee: FamilyMember;
 }) {
-  const [assignee, setAssignee] = useState<FamilyMember>('jax');
+  const [assignee, setAssignee] = useState<FamilyMember>(initialAssignee);
   const [title, setTitle] = useState('');
   const [due, setDue] = useState<'today' | 'tomorrow' | 'none'>('today');
 

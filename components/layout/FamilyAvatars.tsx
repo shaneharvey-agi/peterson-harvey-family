@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { tokens, type FamilyMember, familyBg, familyColor, familyText } from '@/lib/design-tokens';
 import { parseMemberFilter } from '@/lib/events/filter';
+import { AvatarActionSheet, type AvatarAction } from '@/components/layout/AvatarActionSheet';
 
 type AvatarMember = {
   member: FamilyMember;
@@ -18,50 +19,122 @@ const DEFAULT_MEMBERS: AvatarMember[] = [
   { member: 'jax',   letter: 'J', unread: 0 },
 ];
 
+const LONG_PRESS_MS = 450;
+const MOVE_CANCEL_PX = 8;
+
 export function FamilyAvatars({ members = DEFAULT_MEMBERS }: { members?: AvatarMember[] }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const active = parseMemberFilter(searchParams?.get('who'));
+  const [sheetMember, setSheetMember] = useState<FamilyMember | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
 
-  const toggleFilter = (member: FamilyMember) => {
+  const setWho = (member: FamilyMember | null) => {
     const params = new URLSearchParams(searchParams?.toString() ?? '');
-    if (active === member) {
-      params.delete('who');
-    } else {
-      params.set('who', member);
-    }
+    if (member === null) params.delete('who');
+    else params.set('who', member);
     const qs = params.toString();
     router.replace(qs ? `/?${qs}` : '/', { scroll: false });
   };
 
+  const toggleFilter = (member: FamilyMember) => {
+    setWho(active === member ? null : member);
+  };
+
+  const openSheet = (member: FamilyMember) => {
+    setSheetMember(member);
+    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+      try { navigator.vibrate?.(10); } catch { /* ignore */ }
+    }
+  };
+
+  const closeSheet = () => setSheetMember(null);
+
+  const handleAction = (action: AvatarAction) => {
+    const member = sheetMember;
+    if (!member) return;
+    closeSheet();
+    switch (action) {
+      case 'filter':
+        setWho(active === member ? null : member);
+        break;
+      case 'chore':
+        router.push(`/chores?for=${member}&add=1`);
+        break;
+      case 'message':
+        // Pending /messages route — wired when that screen lands.
+        break;
+      case 'remind':
+        showToast(`I\u2019ll nudge you about ${capitalize(member)}.`);
+        break;
+    }
+  };
+
+  function showToast(msg: string) {
+    setToast(msg);
+    window.setTimeout(() => setToast(null), 2200);
+  }
+
   return (
-    <div
-      className="-mx-4"
-      style={{
-        overflowX: 'auto',
-        overflowY: 'hidden',
-        WebkitOverflowScrolling: 'touch',
-        scrollbarWidth: 'none',
-        touchAction: 'pan-x',
-        padding: '8px 0 12px',
-      }}
-    >
+    <>
       <div
-        className="flex items-center px-4"
-        style={{ gap: 14, width: 'max-content' }}
+        className="-mx-4"
+        style={{
+          overflowX: 'auto',
+          overflowY: 'hidden',
+          WebkitOverflowScrolling: 'touch',
+          scrollbarWidth: 'none',
+          touchAction: 'pan-x',
+          padding: '8px 0 12px',
+        }}
       >
-        {members.map(({ member, letter, unread = 0 }) => (
-          <AvatarButton
-            key={member}
-            member={member}
-            letter={letter}
-            unread={unread}
-            isActive={active === member}
-            onToggle={() => toggleFilter(member)}
-          />
-        ))}
+        <div
+          className="flex items-center px-4"
+          style={{ gap: 14, width: 'max-content' }}
+        >
+          {members.map(({ member, letter, unread = 0 }) => (
+            <AvatarButton
+              key={member}
+              member={member}
+              letter={letter}
+              unread={unread}
+              isActive={active === member}
+              onTap={() => toggleFilter(member)}
+              onLongPress={() => openSheet(member)}
+            />
+          ))}
+        </div>
       </div>
-    </div>
+
+      <AvatarActionSheet
+        member={sheetMember}
+        onAction={handleAction}
+        onClose={closeSheet}
+      />
+
+      {toast && (
+        <div
+          className="fixed left-1/2"
+          style={{
+            top: `calc(env(safe-area-inset-top) + 72px)`,
+            transform: 'translateX(-50%)',
+            background: 'rgba(13,17,25,0.95)',
+            border: `1px solid ${tokens.gold}55`,
+            color: '#FFFFFF',
+            fontSize: 13,
+            fontWeight: 600,
+            padding: '10px 16px',
+            borderRadius: 999,
+            boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+            zIndex: 60,
+          }}
+          role="status"
+          aria-live="polite"
+        >
+          {toast}
+        </div>
+      )}
+    </>
   );
 }
 
@@ -70,24 +143,70 @@ function AvatarButton({
   letter,
   unread,
   isActive,
-  onToggle,
+  onTap,
+  onLongPress,
 }: {
   member: FamilyMember;
   letter: string;
   unread: number;
   isActive: boolean;
-  onToggle: () => void;
+  onTap: () => void;
+  onLongPress: () => void;
 }) {
   const [photoOk, setPhotoOk] = useState(true);
+  const timerRef = useRef<number | null>(null);
+  const didLongPress = useRef(false);
+  const startPos = useRef<{ x: number; y: number } | null>(null);
+
+  const clearTimer = () => {
+    if (timerRef.current !== null) {
+      window.clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  };
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    didLongPress.current = false;
+    startPos.current = { x: e.clientX, y: e.clientY };
+    clearTimer();
+    timerRef.current = window.setTimeout(() => {
+      didLongPress.current = true;
+      onLongPress();
+    }, LONG_PRESS_MS);
+  };
+
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (!startPos.current) return;
+    const dx = e.clientX - startPos.current.x;
+    const dy = e.clientY - startPos.current.y;
+    if (dx * dx + dy * dy > MOVE_CANCEL_PX * MOVE_CANCEL_PX) {
+      clearTimer();
+    }
+  };
+
+  const onPointerUp = () => {
+    clearTimer();
+    if (!didLongPress.current) onTap();
+  };
+
+  const onPointerCancel = () => {
+    clearTimer();
+    didLongPress.current = false;
+  };
 
   return (
     <button
       type="button"
-      onClick={onToggle}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerLeave={onPointerCancel}
+      onPointerCancel={onPointerCancel}
+      onContextMenu={(e) => e.preventDefault()}
       aria-label={
         isActive
-          ? `Showing only ${member}. Tap to show family.`
-          : `Show only ${member}'s calendar`
+          ? `Showing only ${member}. Tap to show family. Long-press for actions.`
+          : `Show only ${member}'s calendar. Long-press for actions.`
       }
       aria-pressed={isActive}
       className="relative flex items-center justify-center"
@@ -100,6 +219,9 @@ function AvatarButton({
         opacity: isActive ? 1 : 0.92,
         transform: isActive ? 'scale(1.06)' : 'scale(1)',
         transition: 'transform 180ms ease, opacity 180ms ease',
+        WebkitTouchCallout: 'none',
+        WebkitUserSelect: 'none',
+        userSelect: 'none',
       }}
     >
       <span
@@ -126,6 +248,7 @@ function AvatarButton({
               width: '100%',
               height: '100%',
               objectFit: 'cover',
+              pointerEvents: 'none',
             }}
             draggable={false}
           />
@@ -164,6 +287,10 @@ function AvatarButton({
       )}
     </button>
   );
+}
+
+function capitalize(s: string): string {
+  return s.length === 0 ? s : s[0].toUpperCase() + s.slice(1);
 }
 
 export default FamilyAvatars;
