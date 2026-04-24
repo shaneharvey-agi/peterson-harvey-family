@@ -217,11 +217,7 @@ export function TopStrip({ unreadMessages }: { unreadMessages?: number }) {
           </Link>
         </div>
       </div>
-      <QuickAddMenu
-        open={menuOpen}
-        onClose={() => setMenuOpen(false)}
-        activeKey="findDinner"
-      />
+      <QuickAddMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
     </header>
   );
 }
