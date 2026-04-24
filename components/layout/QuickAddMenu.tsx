@@ -93,10 +93,10 @@ export function QuickAddMenu({
               ? 'transform 180ms cubic-bezier(0.4, 0, 1, 1), opacity 160ms ease'
               : `transform 360ms ${SPRING}, opacity 220ms ease`,
           background: 'rgba(10, 25, 47, 0.75)',
-          backdropFilter: 'blur(30px) saturate(150%)',
-          WebkitBackdropFilter: 'blur(30px) saturate(150%)',
-          borderLeft: `1px solid ${GLASS_GOLD}`,
-          borderBottom: `1px solid ${GLASS_GOLD}`,
+          backdropFilter: 'blur(35px) saturate(150%)',
+          WebkitBackdropFilter: 'blur(35px) saturate(150%)',
+          borderLeft: `0.5px solid ${GLASS_GOLD}`,
+          borderBottom: `0.5px solid ${GLASS_GOLD}`,
           borderTopLeftRadius: 14,
           borderBottomLeftRadius: 14,
           padding: '6px 0',
@@ -104,47 +104,59 @@ export function QuickAddMenu({
         }}
       >
         <ul className="flex flex-col">
-          {ITEMS.map((item) => (
-            <li key={item.key}>
-              <button
-                type="button"
-                onClick={() => implode(item.href)}
-                className="flex items-center w-full text-left"
-                style={{
-                  gap: 12,
-                  padding: '11px 14px',
-                  background: 'transparent',
-                  border: 'none',
-                  color: '#FFFFFF',
-                  transition: 'background 140ms ease',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'rgba(197,160,89,0.07)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'transparent';
-                }}
-              >
-                <span
-                  className="flex items-center justify-center shrink-0"
-                  style={{ width: 24, height: 24, color: GLASS_GOLD }}
-                  aria-hidden
-                >
-                  {item.icon}
-                </span>
-                <span
+          {ITEMS.map((item) => {
+            const recommended = item.key === 'findDinner';
+            const restingBg = recommended
+              ? 'rgba(255,255,255,0.05)'
+              : 'transparent';
+            return (
+              <li key={item.key}>
+                <button
+                  type="button"
+                  onClick={() => implode(item.href)}
+                  className="flex items-center w-full text-left"
                   style={{
-                    fontSize: 11,
-                    fontWeight: 500,
-                    letterSpacing: 0.3,
-                    color: 'rgba(255,255,255,0.82)',
+                    gap: 12,
+                    padding: '12px 14px',
+                    background: restingBg,
+                    border: 'none',
+                    color: '#FFFFFF',
+                    transition: 'background 140ms ease',
+                    boxShadow: recommended
+                      ? 'inset 0 0 20px rgba(255,255,255,0.04)'
+                      : 'none',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = recommended
+                      ? 'rgba(255,255,255,0.08)'
+                      : 'rgba(197,160,89,0.07)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = restingBg;
                   }}
                 >
-                  {item.label}
-                </span>
-              </button>
-            </li>
-          ))}
+                  <span
+                    className="flex items-center justify-center shrink-0"
+                    style={{ width: 24, height: 24, color: GLASS_GOLD }}
+                    aria-hidden
+                  >
+                    {item.icon}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 500,
+                      letterSpacing: 0.3,
+                      color: 'rgba(255,255,255,0.88)',
+                      lineHeight: 1,
+                    }}
+                  >
+                    {item.label}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
         </ul>
       </div>
     </div>
