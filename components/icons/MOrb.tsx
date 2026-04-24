@@ -15,7 +15,9 @@ const BAR_DELAYS = ['0s', '0.1s', '0.2s', '0.15s', '0.05s', '0.25s'];
 export function MOrb() {
   const router = useRouter();
   const [holding, setHolding] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const confirmTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const heldRef = useRef(false);
 
   const beginBloom = useCallback(() => {
@@ -53,10 +55,16 @@ export function MOrb() {
       }
       clearTimer();
       if (heldRef.current) {
-        setHolding(false);
-        // Placeholder — later this receives the transcribed voice payload.
-        const intent = handleIntent('');
-        if (intent.route) router.push(intent.route);
+        // Confirm pulse — M scales 1→1.1→1 before the orb dismisses.
+        setConfirming(true);
+        if (confirmTimer.current) clearTimeout(confirmTimer.current);
+        confirmTimer.current = setTimeout(() => {
+          setConfirming(false);
+          setHolding(false);
+          // Placeholder — later this receives the transcribed voice payload.
+          const intent = handleIntent('');
+          if (intent.route) router.push(intent.route);
+        }, 240);
       }
     },
     [router]
@@ -64,8 +72,13 @@ export function MOrb() {
 
   const onPointerCancel = useCallback(() => {
     clearTimer();
+    if (confirmTimer.current) {
+      clearTimeout(confirmTimer.current);
+      confirmTimer.current = null;
+    }
     if (heldRef.current) {
       heldRef.current = false;
+      setConfirming(false);
       setHolding(false);
     }
   }, []);
@@ -77,7 +90,7 @@ export function MOrb() {
 
   return (
     <>
-      <VoiceOrb active={holding} caption="Listening" />
+      <VoiceOrb active={holding} confirming={confirming} caption="Listening" />
       <button
         type="button"
         onClick={handleClick}

@@ -1,28 +1,40 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { tokens } from '@/lib/design-tokens';
+import { MonolineM } from '@/components/icons/MonolineM';
 import { useMicLevel } from '@/lib/hooks/useMicLevel';
 import { pulseHaptic } from '@/lib/haptics';
 
 interface VoiceOrbProps {
-  /** When true, the orb blooms into view and starts listening. */
+  /** When true, the orb is bloomed and listening to mic input. */
   active: boolean;
-  /** Label rendered below the orb — e.g. "Listening…" or "Ask Mikayla". */
+  /** The user just released — play the M confirm pulse. */
+  confirming?: boolean;
+  /** AI is processing a request — slow the breathing glow. */
+  thinking?: boolean;
+  /** Caption beneath the orb. */
   caption?: string;
 }
 
 /**
- * Fluid gold sphere that rises from the M button on press-and-hold.
- * Occupies the bottom 30% of the viewport and isolates the voice interaction
- * area with a heavy backdrop blur. Scale + ripple intensity track mic decibel.
+ * Branded voice orb. A fluid gold sphere blooms from the M button on press,
+ * with the monoline M held sharp and static in its center (80% opacity). The
+ * two ripple rings originate from behind the glyph so the M reads as the
+ * source of the energy. A 0.5px inner gold stroke gives the sphere a
+ * glass-marble edge. A breathing radial glow sits behind the M and slows
+ * when `thinking` is true.
  */
-export function VoiceOrb({ active, caption = 'Listening…' }: VoiceOrbProps) {
+export function VoiceOrb({
+  active,
+  confirming = false,
+  thinking = false,
+  caption = 'Listening',
+}: VoiceOrbProps) {
   const level = useMicLevel(active);
   const lastPulseRef = useRef(0);
 
-  // Mirror the AI's speaking rhythm: when level crosses a threshold, fire a
-  // subtle tick haptic. Rate-limited so we don't hammer the vibrator.
+  // Mirror the speaker's rhythm with subtle pulse haptics, rate-limited.
   useEffect(() => {
     if (!active) return;
     const now = performance.now();
@@ -32,8 +44,15 @@ export function VoiceOrb({ active, caption = 'Listening…' }: VoiceOrbProps) {
     }
   }, [active, level]);
 
-  // Voice-reactive geometry. Keep multipliers modest so the motion reads as
-  // natural breathing, not a hyperactive equalizer.
+  // Confirm pulse on release: M punches up to 1.1× then settles to 1.0×.
+  const [mScale, setMScale] = useState(1);
+  useEffect(() => {
+    if (!confirming) return;
+    setMScale(1.12);
+    const t = setTimeout(() => setMScale(1), 140);
+    return () => clearTimeout(t);
+  }, [confirming]);
+
   const coreScale = active ? 1 + level * 0.18 : 0.18;
   const ring1Scale = active ? 1.18 + level * 0.32 : 0.22;
   const ring2Scale = active ? 1.42 + level * 0.55 : 0.22;
@@ -53,7 +72,7 @@ export function VoiceOrb({ active, caption = 'Listening…' }: VoiceOrbProps) {
         transition: 'opacity 260ms ease-out',
       }}
     >
-      {/* Aura — heavy blur behind the orb to isolate the voice area. */}
+      {/* Aura — heavy blur to isolate the voice interaction zone */}
       <div
         style={{
           position: 'absolute',
@@ -62,11 +81,9 @@ export function VoiceOrb({ active, caption = 'Listening…' }: VoiceOrbProps) {
           WebkitBackdropFilter: 'blur(40px) saturate(1.15)',
           background:
             'radial-gradient(ellipse at 50% 100%, rgba(7,9,15,0.55) 0%, rgba(7,9,15,0.35) 55%, rgba(7,9,15,0.15) 100%)',
-          transition: 'opacity 320ms ease-out',
         }}
       />
 
-      {/* Bottom 30% stage */}
       <div
         style={{
           position: 'absolute',
@@ -91,7 +108,7 @@ export function VoiceOrb({ active, caption = 'Listening…' }: VoiceOrbProps) {
             justifyContent: 'center',
           }}
         >
-          {/* Outer halo — soft gold wash behind the sphere */}
+          {/* Halo wash */}
           <div
             style={{
               position: 'absolute',
@@ -105,7 +122,7 @@ export function VoiceOrb({ active, caption = 'Listening…' }: VoiceOrbProps) {
             }}
           />
 
-          {/* Outer ripple ring */}
+          {/* Outer ripple ring — behind the M */}
           <div
             style={{
               position: 'absolute',
@@ -120,7 +137,7 @@ export function VoiceOrb({ active, caption = 'Listening…' }: VoiceOrbProps) {
             }}
           />
 
-          {/* Inner ripple ring */}
+          {/* Inner ripple ring — behind the M */}
           <div
             style={{
               position: 'absolute',
@@ -135,7 +152,7 @@ export function VoiceOrb({ active, caption = 'Listening…' }: VoiceOrbProps) {
             }}
           />
 
-          {/* Core fluid sphere */}
+          {/* Core fluid sphere with 0.5px gold inner-stroke (glass marble) */}
           <div
             style={{
               width: 168,
@@ -157,12 +174,13 @@ export function VoiceOrb({ active, caption = 'Listening…' }: VoiceOrbProps) {
                 0 0 64px rgba(196,160,80,${0.45 + level * 0.4}),
                 0 0 120px rgba(196,160,80,${0.2 + level * 0.3}),
                 inset -10px -18px 38px rgba(90,62,18,0.55),
-                inset 8px 12px 28px rgba(255,240,200,0.4)
+                inset 8px 12px 28px rgba(255,240,200,0.4),
+                inset 0 0 0 0.5px rgba(245,225,168,0.85)
               `,
             }}
           />
 
-          {/* Specular highlight — sells the "fluid" read */}
+          {/* Specular highlight */}
           <div
             style={{
               position: 'absolute',
@@ -180,6 +198,52 @@ export function VoiceOrb({ active, caption = 'Listening…' }: VoiceOrbProps) {
               pointerEvents: 'none',
             }}
           />
+
+          {/* Breathing glow — sits behind the M, slows when thinking */}
+          <div
+            aria-hidden="true"
+            className={
+              active
+                ? thinking
+                  ? 'orb-m-glow-thinking'
+                  : 'orb-m-glow'
+                : undefined
+            }
+            style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              width: 104,
+              height: 104,
+              borderRadius: '50%',
+              background:
+                'radial-gradient(circle, rgba(255,240,200,0.7) 0%, rgba(255,240,200,0.18) 55%, rgba(255,240,200,0) 80%)',
+              filter: 'blur(10px)',
+              pointerEvents: 'none',
+              opacity: active ? 1 : 0,
+              transform: 'translate(-50%, -50%)',
+              transition: 'opacity 220ms ease-out',
+            }}
+          />
+
+          {/* Monoline M glyph — sharp, static, on top of the sphere */}
+          <div
+            aria-hidden="true"
+            style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: `translate(-50%, -50%) scale(${active ? mScale : 0.4})`,
+              opacity: active ? 0.8 : 0,
+              transition:
+                'transform 140ms cubic-bezier(0.2, 1.1, 0.35, 1.05), opacity 220ms ease-out',
+              pointerEvents: 'none',
+              // Crisp, non-blurred rendering — countered by GPU transforms.
+              willChange: 'transform',
+            }}
+          >
+            <MonolineM size={68} stroke={tokens.gold} strokeWidth={2.4} />
+          </div>
         </div>
 
         <div
@@ -191,10 +255,11 @@ export function VoiceOrb({ active, caption = 'Listening…' }: VoiceOrbProps) {
             textTransform: 'uppercase',
             opacity: active ? 1 : 0,
             transform: active ? 'translateY(0)' : 'translateY(8px)',
-            transition: 'opacity 280ms ease-out 120ms, transform 280ms ease-out 120ms',
+            transition:
+              'opacity 280ms ease-out 120ms, transform 280ms ease-out 120ms',
           }}
         >
-          {caption}
+          {thinking ? 'Thinking' : caption}
         </div>
       </div>
     </div>
