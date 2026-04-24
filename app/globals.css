@@ -103,13 +103,6 @@ body {
   transform-origin: center;
 }
 
-/* Breathing glow behind the M glyph inside the voice orb. */
-@keyframes orbMGlow {
-  0%, 100% { opacity: 0.50; transform: translate(-50%, -50%) scale(0.92); }
-  50%      { opacity: 0.92; transform: translate(-50%, -50%) scale(1.08); }
-}
-.orb-m-glow          { animation: orbMGlow 3.2s ease-in-out infinite; }
-.orb-m-glow-thinking { animation: orbMGlow 5.6s ease-in-out infinite; }
 
 @keyframes cloudDrift {
   0%, 100% { transform: translateX(0); }

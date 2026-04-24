@@ -29,3 +29,11 @@ export function pulseHaptic(): void {
 export function tick(): void {
   vibrate(4);
 }
+
+/**
+ * "Flutter" — three short 15ms pulses with brief gaps. Mirrors the
+ * flag-wave gesture the M signature performs on activation.
+ */
+export function flutter(): void {
+  vibrate([15, 55, 15, 55, 15]);
+}

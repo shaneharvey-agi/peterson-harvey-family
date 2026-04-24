@@ -3,28 +3,24 @@
 import { useCallback, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { tokens } from '@/lib/design-tokens';
-import { MonolineM } from '@/components/icons/MonolineM';
-import { VoiceOrb } from '@/components/voice/VoiceOrb';
-import { softBloom, tick as tickHaptic } from '@/lib/haptics';
+import { LiquidSignatureM } from '@/components/icons/LiquidSignatureM';
+import { flutter, tick as tickHaptic } from '@/lib/haptics';
 import { handleIntent } from '@/lib/intent';
 
 const HOLD_MS = 260;
-const BAR_HEIGHTS = [3, 6, 9, 5, 8, 4];
-const BAR_DELAYS = ['0s', '0.1s', '0.2s', '0.15s', '0.05s', '0.25s'];
 
 export function MOrb() {
   const router = useRouter();
   const [holding, setHolding] = useState(false);
-  const [confirming, setConfirming] = useState(false);
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const confirmTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const heldRef = useRef(false);
 
-  const beginBloom = useCallback(() => {
+  const beginWave = useCallback(() => {
     heldRef.current = true;
     setHolding(true);
     tickHaptic();
-    setTimeout(softBloom, 40);
+    // Slight delay so the threshold tick + flutter read as two distinct beats.
+    setTimeout(flutter, 50);
   }, []);
 
   const clearTimer = () => {
@@ -36,14 +32,12 @@ export function MOrb() {
 
   const onPointerDown = useCallback(
     (e: React.PointerEvent<HTMLButtonElement>) => {
-      // Capture so pointerup fires here even if the finger drifts off
-      // the button (likely, once the full-screen orb is bloomed).
       e.currentTarget.setPointerCapture?.(e.pointerId);
       heldRef.current = false;
       clearTimer();
-      holdTimer.current = setTimeout(beginBloom, HOLD_MS);
+      holdTimer.current = setTimeout(beginWave, HOLD_MS);
     },
-    [beginBloom]
+    [beginWave]
   );
 
   const onPointerUp = useCallback(
@@ -55,16 +49,10 @@ export function MOrb() {
       }
       clearTimer();
       if (heldRef.current) {
-        // Confirm pulse — M scales 1→1.1→1 before the orb dismisses.
-        setConfirming(true);
-        if (confirmTimer.current) clearTimeout(confirmTimer.current);
-        confirmTimer.current = setTimeout(() => {
-          setConfirming(false);
-          setHolding(false);
-          // Placeholder — later this receives the transcribed voice payload.
-          const intent = handleIntent('');
-          if (intent.route) router.push(intent.route);
-        }, 240);
+        setHolding(false);
+        // Placeholder — wire to STT transcript when voice pipeline lands.
+        const intent = handleIntent('');
+        if (intent.route) router.push(intent.route);
       }
     },
     [router]
@@ -72,13 +60,8 @@ export function MOrb() {
 
   const onPointerCancel = useCallback(() => {
     clearTimer();
-    if (confirmTimer.current) {
-      clearTimeout(confirmTimer.current);
-      confirmTimer.current = null;
-    }
     if (heldRef.current) {
       heldRef.current = false;
-      setConfirming(false);
       setHolding(false);
     }
   }, []);
@@ -89,71 +72,40 @@ export function MOrb() {
   }, [router]);
 
   return (
-    <>
-      <VoiceOrb active={holding} confirming={confirming} caption="Listening" />
-      <button
-        type="button"
-        onClick={handleClick}
-        onPointerDown={onPointerDown}
-        onPointerUp={onPointerUp}
-        onPointerCancel={onPointerCancel}
-        onContextMenu={(e) => e.preventDefault()}
-        aria-label="Mikayla — tap to chat, hold to speak"
-        className="relative flex flex-col items-center justify-start overflow-hidden p-0"
-        style={{
-          width: 56,
-          height: 56,
-          borderRadius: 16,
-          background: tokens.gold,
-          marginTop: -20,
-          border: `3px solid ${tokens.bg}`,
-          boxShadow: `0 0 0 1.5px ${tokens.gold}, 0 4px 12px rgba(196,160,80,0.3)`,
-          transform: holding ? 'scale(0.94)' : 'scale(1)',
-          transition: 'transform 160ms ease-out',
-          touchAction: 'manipulation',
-          WebkitUserSelect: 'none',
-          userSelect: 'none',
-        }}
-      >
-        <span
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: '100%',
-            height: 36,
-            marginTop: 4,
-          }}
-        >
-          <MonolineM size={28} stroke="#07090F" strokeWidth={1.9} />
-        </span>
-
-        {/* Waveform strip — animates while listening */}
-        <div
-          className="absolute bottom-0 left-0 right-0 flex items-center justify-center"
-          style={{
-            height: 14,
-            background: tokens.bg,
-            gap: 1.5,
-          }}
-        >
-          {BAR_HEIGHTS.map((h, i) => (
-            <span
-              key={i}
-              className={holding ? 'waveform-bar' : ''}
-              style={{
-                width: 1.5,
-                height: h,
-                background: tokens.gold,
-                borderRadius: 0.5,
-                animationDelay: BAR_DELAYS[i],
-                animationPlayState: holding ? 'running' : 'paused',
-              }}
-            />
-          ))}
-        </div>
-      </button>
-    </>
+    <button
+      type="button"
+      onClick={handleClick}
+      onPointerDown={onPointerDown}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerCancel}
+      onContextMenu={(e) => e.preventDefault()}
+      aria-label="Mikayla — tap to chat, hold to speak"
+      className="relative flex items-center justify-center overflow-visible p-0"
+      style={{
+        width: 56,
+        height: 56,
+        borderRadius: 16,
+        background: tokens.bg,
+        marginTop: -20,
+        border: `1.5px solid ${tokens.gold}`,
+        boxShadow: holding
+          ? `0 0 18px rgba(196,160,80,0.55), 0 4px 12px rgba(196,160,80,0.25)`
+          : `0 0 8px rgba(196,160,80,0.18), 0 4px 12px rgba(196,160,80,0.18)`,
+        transform: holding ? 'scale(0.96)' : 'scale(1)',
+        transition: 'transform 160ms ease-out, box-shadow 220ms ease-out',
+        touchAction: 'manipulation',
+        WebkitUserSelect: 'none',
+        userSelect: 'none',
+      }}
+    >
+      <LiquidSignatureM
+        width={46}
+        height={28}
+        active={holding}
+        idPrefix="morb"
+        strokeWidth={2}
+      />
+    </button>
   );
 }
 
