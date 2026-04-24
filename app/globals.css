@@ -103,6 +103,13 @@ body {
   transform-origin: center;
 }
 
+/* Pulsing gold halo that sits behind the M button when listening. */
+@keyframes morbHaloPulse {
+  0%, 100% { opacity: 0.45; transform: translateX(-50%) scale(0.88); }
+  50%      { opacity: 0.95; transform: translateX(-50%) scale(1.18); }
+}
+.morb-halo-pulse { animation: morbHaloPulse 1.6s ease-in-out infinite; }
+
 
 @keyframes cloudDrift {
   0%, 100% { transform: translateX(0); }
