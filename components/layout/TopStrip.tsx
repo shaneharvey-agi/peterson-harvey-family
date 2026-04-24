@@ -5,10 +5,12 @@ import Link from 'next/link';
 import { tokens } from '@/lib/design-tokens';
 import { fetchUnreadCount } from '@/lib/queries/notifications';
 import { fetchTotalUnreadMessages } from '@/lib/queries/chatMessages';
+import { QuickAddMenu } from './QuickAddMenu';
 
 export function TopStrip({ unreadMessages }: { unreadMessages?: number }) {
   const [unreadNotifs, setUnreadNotifs] = useState<number>(0);
   const [unreadMsgs, setUnreadMsgs] = useState<number>(unreadMessages ?? 0);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -79,21 +81,28 @@ export function TopStrip({ unreadMessages }: { unreadMessages?: number }) {
           <button
             type="button"
             aria-label="Quick add"
+            aria-expanded={menuOpen}
+            aria-haspopup="menu"
+            onClick={() => setMenuOpen((v) => !v)}
             className="flex items-center justify-center"
             style={{
               width: 32,
               height: 32,
               borderRadius: 999,
-              background: 'rgba(255, 255, 255, 0.08)',
-              border: `1px solid rgba(255, 255, 255, 0.25)`,
+              background: menuOpen
+                ? 'rgba(196, 160, 80, 0.18)'
+                : 'rgba(255, 255, 255, 0.08)',
+              border: `1px solid ${menuOpen ? tokens.gold : 'rgba(255, 255, 255, 0.25)'}`,
               color: '#FFFFFF',
               padding: 0,
+              transition: 'background 160ms ease, border-color 160ms ease, transform 200ms ease',
+              transform: menuOpen ? 'rotate(45deg)' : 'rotate(0deg)',
             }}
           >
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
               <path
                 d="M7 1.5V12.5M1.5 7H12.5"
-                stroke="#FFFFFF"
+                stroke={menuOpen ? tokens.gold : '#FFFFFF'}
                 strokeWidth="1.8"
                 strokeLinecap="round"
               />
@@ -208,6 +217,11 @@ export function TopStrip({ unreadMessages }: { unreadMessages?: number }) {
           </Link>
         </div>
       </div>
+      <QuickAddMenu
+        open={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        activeKey="findDinner"
+      />
     </header>
   );
 }
