@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { tokens } from '@/lib/design-tokens';
 import { MOrb } from '@/components/icons/MOrb';
 import { MealsIcon } from '@/components/icons/MealsIcon';
@@ -7,6 +8,7 @@ import { MealsIcon } from '@/components/icons/MealsIcon';
 type Tab = 'home' | 'todo' | 'kitchen' | 'meals';
 
 export function BottomNav({ active = 'home' }: { active?: Tab }) {
+  const router = useRouter();
   return (
     <nav
       className="fixed bottom-0 left-0 right-0 z-10"
@@ -20,7 +22,7 @@ export function BottomNav({ active = 'home' }: { active?: Tab }) {
       }}
     >
       <div className="flex items-end justify-between">
-        <NavItem label="Home" active={active === 'home'} icon={<HomeIcon active={active === 'home'} />} />
+        <NavItem label="Home" active={active === 'home'} icon={<HomeIcon active={active === 'home'} />} onClick={() => router.push('/')} />
         <NavItem label="To Do" active={active === 'todo'} icon={<TodoIcon active={active === 'todo'} />} />
         <div className="flex flex-col items-center" style={{ width: 56 }}>
           <MOrb />
@@ -42,15 +44,18 @@ function NavItem({
   active,
   icon,
   iconBoxSize = 28,
+  onClick,
 }: {
   label: string;
   active: boolean;
   icon: React.ReactNode;
   iconBoxSize?: number;
+  onClick?: () => void;
 }) {
   return (
     <button
       type="button"
+      onClick={onClick}
       className="flex flex-col items-center"
       style={{
         gap: 4,
