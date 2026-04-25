@@ -4,17 +4,32 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { BottomNav } from '@/components/layout/BottomNav';
 import { tokens } from '@/lib/design-tokens';
+import { impact } from '@/lib/haptics';
 
-// MOrb already fires impact('light') in its tap handler before routing here,
-// so the haptic requirement from the brief is satisfied at the call site.
-
+const NAV_HEIGHT = 76;
+const COMPOSER_HEIGHT = 62;
 const TYPING_MS = 1800;
 
+interface LocalMessage {
+  id: string;
+  sender: 'shane' | 'mikayla';
+  body: string;
+  createdAt: string;
+}
+
 export default function MikaylaChatPage() {
-  const [text, setText] = useState('');
+  const [messages, setMessages] = useState<LocalMessage[]>([]);
+  const [draft, setDraft] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const bottomRef = useRef<HTMLDivElement | null>(null);
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Slide-in haptic per brief. MOrb already fires impact('light') on tap so
+  // this stacks one more pulse at mount, mirroring the slide-up motion.
+  useEffect(() => {
+    impact('light');
+  }, []);
 
   // Delay focus a touch so the route transition settles before the keyboard rises.
   useEffect(() => {
@@ -28,70 +43,127 @@ export default function MikaylaChatPage() {
     };
   }, []);
 
+  // Snap to the latest bubble whenever the list grows.
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ block: 'end' });
+  }, [messages.length, isTyping]);
+
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!text.trim()) return;
-    setText('');
+    const text = draft.trim();
+    if (!text) return;
+
+    const now = Date.now();
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: `u-${now}`,
+        sender: 'shane',
+        body: text,
+        createdAt: new Date(now).toISOString(),
+      },
+    ]);
+    setDraft('');
     setIsTyping(true);
+
     if (typingTimer.current) clearTimeout(typingTimer.current);
-    typingTimer.current = setTimeout(() => setIsTyping(false), TYPING_MS);
+    typingTimer.current = setTimeout(() => {
+      setIsTyping(false);
+      // Placeholder reply until LLM streaming is wired up.
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `m-${Date.now()}`,
+          sender: 'mikayla',
+          body: 'Got it — I\u2019ll get back to you on this in a sec.',
+          createdAt: new Date().toISOString(),
+        },
+      ]);
+    }, TYPING_MS);
   };
 
   return (
     <main
-      className="relative mx-auto flex flex-col"
+      className="relative mx-auto"
       style={{
         maxWidth: 393,
         minHeight: '100dvh',
         background: tokens.bg,
         color: '#FFFFFF',
-        paddingBottom: 'calc(88px + env(safe-area-inset-bottom))',
+        paddingBottom: `calc(${COMPOSER_HEIGHT + NAV_HEIGHT}px + env(safe-area-inset-bottom))`,
       }}
     >
+      {/* Sticky header — mirrors /messages/[who] structure but the brand
+          cluster (gold 28px M + wordmark) is anchored top-left exactly as
+          it appears in the home-screen TopStrip. The M waves during typing. */}
       <header
-        className="flex items-center justify-between px-4"
+        className="flex items-center gap-3 px-4"
         style={{
           paddingTop: `calc(12px + env(safe-area-inset-top))`,
-          paddingBottom: 10,
+          paddingBottom: 12,
+          position: 'sticky',
+          top: 0,
+          zIndex: 10,
+          background: 'rgba(7,9,15,0.92)',
+          backdropFilter: 'blur(10px)',
+          WebkitBackdropFilter: 'blur(10px)',
         }}
       >
         <Link
           href="/"
-          className="text-[13px] no-underline"
+          className="text-[14px] no-underline shrink-0"
+          aria-label="Back home"
           style={{ color: 'rgba(255,255,255,0.55)' }}
         >
-          ← Back
+          ←
         </Link>
-        <span style={{ width: 40 }} aria-hidden="true" />
+        <BrandCluster typing={isTyping} />
       </header>
 
-      <div
-        className="flex justify-center"
-        style={{ paddingTop: 18, paddingBottom: 14 }}
-      >
-        <MonolineM typing={isTyping} />
+      {/* Message list */}
+      <div className="px-3 py-3 flex flex-col gap-1">
+        {messages.length === 0 && !isTyping ? (
+          <EmptyThread />
+        ) : (
+          messages.map((m, idx) => {
+            const prev = idx > 0 ? messages[idx - 1] : null;
+            const sameSenderAsPrev = prev?.sender === m.sender;
+            return (
+              <Bubble
+                key={m.id}
+                message={m}
+                showAvatar={!sameSenderAsPrev && m.sender !== 'shane'}
+                tightTop={sameSenderAsPrev}
+              />
+            );
+          })
+        )}
+        {isTyping && <TypingBubble />}
+        <div ref={bottomRef} />
       </div>
 
-      <div style={{ flex: 1 }} />
-
+      {/* Composer — minimalist gold-line input per the Liquid Glass brief.
+          Pinned above BottomNav with a 25px backdrop blur. */}
       <form
         onSubmit={onSubmit}
-        className="fixed left-0 right-0 mx-auto"
+        className="fixed left-1/2"
         style={{
+          transform: 'translateX(-50%)',
+          bottom: `calc(${NAV_HEIGHT}px + env(safe-area-inset-bottom))`,
+          width: '100%',
           maxWidth: 393,
-          bottom: 'calc(76px + env(safe-area-inset-bottom))',
           padding: '14px 20px 16px',
           background: 'rgba(7, 9, 15, 0.45)',
           backdropFilter: 'blur(25px) saturate(1.1)',
           WebkitBackdropFilter: 'blur(25px) saturate(1.1)',
-          zIndex: 8,
+          zIndex: 9,
         }}
       >
         <input
           ref={inputRef}
           type="text"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
           placeholder="Message Mikayla"
           autoComplete="off"
           autoCorrect="off"
@@ -118,25 +190,55 @@ export default function MikaylaChatPage() {
   );
 }
 
+/* ─────────── brand cluster ─────────── */
+
+function BrandCluster({ typing }: { typing: boolean }) {
+  return (
+    <div className="flex items-center gap-2 min-w-0">
+      <div
+        className="flex items-center justify-center shrink-0"
+        style={{
+          width: 28,
+          height: 28,
+          borderRadius: 6,
+          background: tokens.gold,
+        }}
+      >
+        <BrandM typing={typing} />
+      </div>
+      <span
+        className="wordmark"
+        style={{
+          fontSize: 20,
+          fontWeight: 800,
+          letterSpacing: '0.3px',
+          lineHeight: 1,
+        }}
+      >
+        Mikayla
+      </span>
+    </div>
+  );
+}
+
 /**
- * Small gold monoline M. Conditional `feTurbulence` flag-wave kicks in only
- * while Mikayla is "typing" — gentler than the bottom MOrb's hold-state wave
- * (3s cycle, lower max displacement) so it reads as a steady breathing ripple
- * rather than a gust.
+ * The bold black "M" inside the gold square. Conditional `feTurbulence`
+ * flag-wave activates only while Mikayla is typing — a subtle 3s breathing
+ * ripple, lighter than the bottom MOrb's hold-state wave (4s/1.6 max).
  */
-function MonolineM({ typing }: { typing: boolean }) {
+function BrandM({ typing }: { typing: boolean }) {
   return (
     <svg
-      width={44}
-      height={44}
-      viewBox="0 0 32 32"
+      width={20}
+      height={22}
+      viewBox="0 0 20 22"
       aria-hidden="true"
-      style={{ overflow: 'visible', display: 'block' }}
+      style={{ display: 'block', overflow: 'visible' }}
     >
       <defs>
         {typing && (
           <filter
-            id="mikayla-typing-wave"
+            id="brand-m-typing-wave"
             x="-25%"
             y="-30%"
             width="150%"
@@ -181,15 +283,172 @@ function MonolineM({ typing }: { typing: boolean }) {
           </filter>
         )}
       </defs>
-      <path
-        d="M 5 25 L 5 7 L 16 19 L 27 7 L 27 25"
-        fill="none"
-        stroke={tokens.gold}
-        strokeWidth={1.7}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        filter={typing ? 'url(#mikayla-typing-wave)' : undefined}
-      />
+      <text
+        x="10"
+        y="17"
+        textAnchor="middle"
+        fontFamily="'Helvetica Neue', sans-serif"
+        fontSize="18"
+        fontWeight={800}
+        fill="#000"
+        filter={typing ? 'url(#brand-m-typing-wave)' : undefined}
+      >
+        M
+      </text>
     </svg>
+  );
+}
+
+/* ─────────── bubble ─────────── */
+
+function Bubble({
+  message,
+  showAvatar,
+  tightTop,
+}: {
+  message: LocalMessage;
+  showAvatar: boolean;
+  tightTop: boolean;
+}) {
+  const mine = message.sender === 'shane';
+  const isMikayla = message.sender === 'mikayla';
+
+  const bg = mine ? tokens.shane : `${tokens.gold}22`;
+  const borderCol = mine ? 'transparent' : `${tokens.gold}66`;
+  const textCol = mine ? '#FFFFFF' : '#F0E0B5';
+
+  const time = new Date(message.createdAt).toLocaleTimeString(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+
+  return (
+    <div
+      className={`flex ${mine ? 'justify-end' : 'justify-start'}`}
+      style={{
+        gap: 6,
+        marginTop: tightTop ? 2 : 6,
+      }}
+    >
+      {!mine && (
+        <div className="shrink-0" style={{ width: 28 }}>
+          {showAvatar && isMikayla && <MikaylaBubbleAvatar />}
+        </div>
+      )}
+      <div
+        className="flex flex-col"
+        style={{
+          maxWidth: '78%',
+          alignItems: mine ? 'flex-end' : 'flex-start',
+        }}
+      >
+        <div
+          style={{
+            background: bg,
+            border: `1px solid ${borderCol}`,
+            color: textCol,
+            fontSize: 14,
+            lineHeight: 1.35,
+            padding: '8px 12px',
+            borderRadius: 16,
+            borderTopLeftRadius: mine || tightTop ? 16 : 4,
+            borderTopRightRadius: mine && tightTop ? 4 : 16,
+            borderBottomRightRadius: mine ? 4 : 16,
+            borderBottomLeftRadius: !mine ? 4 : 16,
+            wordBreak: 'break-word',
+          }}
+        >
+          {message.body}
+        </div>
+        <span
+          className="mt-0.5"
+          style={{
+            fontSize: 9,
+            color: 'rgba(255,255,255,0.3)',
+            paddingLeft: mine ? 0 : 4,
+            paddingRight: mine ? 4 : 0,
+          }}
+        >
+          {time}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function MikaylaBubbleAvatar() {
+  return (
+    <span
+      className="flex items-center justify-center"
+      style={{
+        width: 28,
+        height: 28,
+        borderRadius: 7,
+        background: tokens.gold,
+        fontSize: 14,
+        fontWeight: 800,
+        color: '#07090F',
+      }}
+    >
+      M
+    </span>
+  );
+}
+
+/* ─────────── typing indicator ─────────── */
+
+function TypingBubble() {
+  return (
+    <div className="flex justify-start" style={{ gap: 6, marginTop: 6 }}>
+      <div className="shrink-0" style={{ width: 28 }}>
+        <MikaylaBubbleAvatar />
+      </div>
+      <div
+        style={{
+          background: `${tokens.gold}22`,
+          border: `1px solid ${tokens.gold}66`,
+          padding: '10px 14px',
+          borderRadius: 16,
+          borderBottomLeftRadius: 4,
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 4,
+        }}
+        aria-label="Mikayla is typing"
+      >
+        <Dot delay="0s" />
+        <Dot delay="0.18s" />
+        <Dot delay="0.36s" />
+      </div>
+    </div>
+  );
+}
+
+function Dot({ delay }: { delay: string }) {
+  return (
+    <span
+      className="waveform-bar"
+      style={{
+        width: 5,
+        height: 5,
+        borderRadius: '50%',
+        background: tokens.gold,
+        animationDelay: delay,
+        transformOrigin: 'center',
+      }}
+    />
+  );
+}
+
+/* ─────────── empty state ─────────── */
+
+function EmptyThread() {
+  return (
+    <div className="pt-16 text-center">
+      <div className="text-[13px] text-white/50">No messages yet.</div>
+      <div className="text-[11px] text-white/30 mt-1">
+        Ask her anything. She&rsquo;ll remember.
+      </div>
+    </div>
   );
 }
