@@ -30,9 +30,11 @@ interface RequestSheetProps {
   fromMember: FamilyMember;
   onClose: () => void;
   onSent?: (memberSentTo: FamilyMember) => void;
+  /** Optional pre-filled draft (e.g. from voice transcription). */
+  prefill?: string;
 }
 
-export function RequestSheet({ member, fromMember, onClose, onSent }: RequestSheetProps) {
+export function RequestSheet({ member, fromMember, onClose, onSent, prefill }: RequestSheetProps) {
   const [visible, setVisible] = useState(false);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
@@ -43,6 +45,10 @@ export function RequestSheet({ member, fromMember, onClose, onSent }: RequestShe
       const id = requestAnimationFrame(() => setVisible(true));
       const focusId = window.setTimeout(() => inputRef.current?.focus(), 160);
       impact('light');
+      // Seed the textarea with the voice transcript when the sheet opens
+      // for a new member. We deliberately overwrite rather than append so a
+      // fresh hold replaces stale content.
+      setDraft(prefill ?? '');
       return () => {
         cancelAnimationFrame(id);
         window.clearTimeout(focusId);
@@ -52,7 +58,7 @@ export function RequestSheet({ member, fromMember, onClose, onSent }: RequestShe
     setDraft('');
     setSending(false);
     return undefined;
-  }, [member]);
+  }, [member, prefill]);
 
   if (!member) return null;
 

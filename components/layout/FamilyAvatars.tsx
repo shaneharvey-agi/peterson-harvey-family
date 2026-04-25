@@ -1,13 +1,19 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { tokens, type FamilyMember, familyBg, familyColor, familyText } from '@/lib/design-tokens';
 import { parseMemberFilter } from '@/lib/events/filter';
 import { AvatarActionSheet, type AvatarAction } from '@/components/layout/AvatarActionSheet';
 import { RequestSheet } from '@/components/layout/RequestSheet';
+import { VoiceBloom } from '@/components/layout/VoiceBloom';
 import { fetchPendingByRecipient } from '@/lib/queries/requests';
 import { REQUEST_SENT_EVENT } from '@/lib/mutations/requests';
+import { isSpeechSupported, startSpeech, type SpeechSession } from '@/lib/speech';
+import { pulseHaptic, softBloom } from '@/lib/haptics';
+
+const SUSTAINED_HAPTIC_MS = 700;
+const ACTIVE_BLOOM_MIN_TRANSCRIPT = 2; // chars — ignore stray throat-clears
 
 type AvatarMember = {
   member: FamilyMember;
@@ -35,10 +41,41 @@ export function FamilyAvatars({ members = DEFAULT_MEMBERS }: { members?: AvatarM
   const active = parseMemberFilter(searchParams?.get('who'));
   const [sheetMember, setSheetMember] = useState<FamilyMember | null>(null);
   const [requestMember, setRequestMember] = useState<FamilyMember | null>(null);
+  const [requestPrefill, setRequestPrefill] = useState<string>('');
   const [toast, setToast] = useState<string | null>(null);
   const [pending, setPending] = useState<Record<FamilyMember, number>>({
     shane: 0, molly: 0, evey: 0, jax: 0,
   });
+
+  // Active Bloom voice state. `recording` drives the bloom orb + ghosted
+  // transcript line. The ref shadows the state so the release handler can
+  // read the latest text synchronously without waiting for React.
+  const [recording, setRecording] = useState(false);
+  const [transcript, setTranscript] = useState('');
+  const transcriptRef = useRef('');
+  const speechSessionRef = useRef<SpeechSession | null>(null);
+  const hapticTimerRef = useRef<number | null>(null);
+
+  const stopSustainedHaptic = useCallback(() => {
+    if (hapticTimerRef.current !== null) {
+      window.clearInterval(hapticTimerRef.current);
+      hapticTimerRef.current = null;
+    }
+  }, []);
+
+  const stopRecording = useCallback(
+    (mode: 'capture' | 'discard') => {
+      stopSustainedHaptic();
+      const session = speechSessionRef.current;
+      speechSessionRef.current = null;
+      if (session) {
+        if (mode === 'capture') session.stop();
+        else session.abort();
+      }
+      setRecording(false);
+    },
+    [stopSustainedHaptic],
+  );
 
   // Pull pending request counts for the gold "owe-them-an-answer" badge.
   // Re-fetches whenever a request is sent anywhere in the app.
@@ -75,13 +112,113 @@ export function FamilyAvatars({ members = DEFAULT_MEMBERS }: { members?: AvatarM
 
   const openSheet = (member: FamilyMember) => {
     setSheetMember(member);
-    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-      try { navigator.vibrate?.(10); } catch { /* ignore */ }
+    softBloom();
+  };
+
+  // Active Bloom — long-press fired. Open sheet, kick off Web Speech, start
+  // the sustained "soft engine" haptic loop. If Web Speech isn't supported
+  // (Firefox, some mobile browsers), we still open the sheet — we just don't
+  // record anything.
+  const startActiveBloom = (member: FamilyMember) => {
+    openSheet(member);
+    transcriptRef.current = '';
+    setTranscript('');
+    if (!isSpeechSupported()) return;
+    setRecording(true);
+    speechSessionRef.current = startSpeech({
+      onInterim: (text) => {
+        transcriptRef.current = text;
+        setTranscript(text);
+      },
+      onFinal: (text) => {
+        transcriptRef.current = text;
+      },
+      onError: () => {
+        // mic permission denied / API hiccup — collapse silently to standard
+        // tap-to-pick mode rather than crashing the gesture
+        stopRecording('discard');
+      },
+    });
+    if (speechSessionRef.current) {
+      // Sustained "soft engine" pulse — gentle every 700ms while the user
+      // keeps holding. Less aggressive than the MOrb 4s flutter so it reads
+      // as ambient warmth, not a metronome.
+      hapticTimerRef.current = window.setInterval(pulseHaptic, SUSTAINED_HAPTIC_MS);
     }
   };
 
-  const closeSheet = () => setSheetMember(null);
+  const closeSheet = () => {
+    if (recording) stopRecording('discard');
+    setSheetMember(null);
+    setTranscript('');
+    transcriptRef.current = '';
+  };
+
   const closeRequest = () => setRequestMember(null);
+
+  const openRequestPrefilled = (member: FamilyMember, content: string) => {
+    setRequestPrefill(content);
+    window.setTimeout(() => setRequestMember(member), 220);
+  };
+
+  // End-of-hold handler. Snapshot the transcript synchronously, close the
+  // bloom, then ship the text to the intent classifier and route the user
+  // to the matching action.
+  const endActiveBloom = async (member: FamilyMember) => {
+    stopRecording('capture');
+    const captured = transcriptRef.current.trim();
+    setTranscript('');
+    transcriptRef.current = '';
+
+    if (captured.length < ACTIVE_BLOOM_MIN_TRANSCRIPT) {
+      // No real speech — leave the action sheet open for tap-to-pick.
+      return;
+    }
+
+    setSheetMember(null);
+
+    try {
+      const res = await fetch('/api/intent', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ transcript: captured, member }),
+      });
+      const data = await res.json();
+      routeByIntent(member, String(data?.kind ?? 'request'), String(data?.content ?? captured));
+    } catch {
+      // /api/intent down — fall through to a Request draft so the user
+      // doesn't lose what they said.
+      openRequestPrefilled(member, captured);
+    }
+  };
+
+  const routeByIntent = (member: FamilyMember, kind: string, content: string) => {
+    switch (kind) {
+      case 'filter':
+        setWho(member);
+        showToast(`Filtered to ${capitalize(member)}.`);
+        return;
+      case 'message':
+        // TODO(Phase C-b): wire prefill through to /messages/[who]
+        router.push(`/messages/${member}`);
+        return;
+      case 'chore':
+        // TODO(Phase C-b): wire prefill through to /chores form
+        router.push(`/chores?for=${member}&add=1`);
+        return;
+      case 'request':
+      default:
+        openRequestPrefilled(member, content);
+    }
+  };
+
+  // Make sure mic + haptic loop don't outlive the component (e.g. nav-away
+  // mid-hold). Keeps Safari happy.
+  useEffect(() => {
+    return () => {
+      stopRecording('discard');
+    };
+  }, [stopRecording]);
 
   const handleAction = (action: AvatarAction) => {
     const member = sheetMember;
@@ -140,16 +277,27 @@ export function FamilyAvatars({ members = DEFAULT_MEMBERS }: { members?: AvatarM
               pendingRequests={pending[member] ?? 0}
               isActive={active === member}
               onTap={() => toggleFilter(member)}
-              onLongPress={() => openSheet(member)}
+              onLongPressStart={() => startActiveBloom(member)}
+              onLongPressEnd={(cancelled) => {
+                if (cancelled) {
+                  stopRecording('discard');
+                } else {
+                  endActiveBloom(member);
+                }
+              }}
             />
           ))}
         </div>
       </div>
 
+      <VoiceBloom active={recording} />
+
       <AvatarActionSheet
         member={sheetMember}
         onAction={handleAction}
         onClose={closeSheet}
+        recording={recording}
+        transcript={transcript}
       />
 
       <RequestSheet
@@ -157,6 +305,7 @@ export function FamilyAvatars({ members = DEFAULT_MEMBERS }: { members?: AvatarM
         fromMember={CURRENT_USER}
         onClose={closeRequest}
         onSent={handleRequestSent}
+        prefill={requestPrefill}
       />
 
       {toast && (
@@ -192,7 +341,8 @@ function AvatarButton({
   pendingRequests,
   isActive,
   onTap,
-  onLongPress,
+  onLongPressStart,
+  onLongPressEnd,
 }: {
   member: FamilyMember;
   letter: string;
@@ -200,11 +350,12 @@ function AvatarButton({
   pendingRequests: number;
   isActive: boolean;
   onTap: () => void;
-  onLongPress: () => void;
+  onLongPressStart: () => void;
+  onLongPressEnd: (cancelled: boolean) => void;
 }) {
   const [photoOk, setPhotoOk] = useState(true);
   const timerRef = useRef<number | null>(null);
-  const didLongPress = useRef(false);
+  const isHolding = useRef(false);
   const startPos = useRef<{ x: number; y: number } | null>(null);
 
   const clearTimer = () => {
@@ -214,18 +365,26 @@ function AvatarButton({
     }
   };
 
-  const onPointerDown = (e: React.PointerEvent) => {
-    didLongPress.current = false;
+  const onPointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
+    isHolding.current = false;
     startPos.current = { x: e.clientX, y: e.clientY };
     clearTimer();
+    // Capture the pointer so the gesture survives the AvatarActionSheet
+    // sliding up over the avatar — without this, pointerup fires on the
+    // sheet and we'd never know the user released.
+    try {
+      e.currentTarget.setPointerCapture?.(e.pointerId);
+    } catch {
+      /* old browsers */
+    }
     timerRef.current = window.setTimeout(() => {
-      didLongPress.current = true;
-      onLongPress();
+      isHolding.current = true;
+      onLongPressStart();
     }, LONG_PRESS_MS);
   };
 
   const onPointerMove = (e: React.PointerEvent) => {
-    if (!startPos.current) return;
+    if (!startPos.current || isHolding.current) return;
     const dx = e.clientX - startPos.current.x;
     const dy = e.clientY - startPos.current.y;
     if (dx * dx + dy * dy > MOVE_CANCEL_PX * MOVE_CANCEL_PX) {
@@ -233,14 +392,27 @@ function AvatarButton({
     }
   };
 
-  const onPointerUp = () => {
+  const onPointerUp = (e: React.PointerEvent<HTMLButtonElement>) => {
     clearTimer();
-    if (!didLongPress.current) onTap();
+    try {
+      e.currentTarget.releasePointerCapture?.(e.pointerId);
+    } catch {
+      /* already released */
+    }
+    if (isHolding.current) {
+      isHolding.current = false;
+      onLongPressEnd(false);
+    } else {
+      onTap();
+    }
   };
 
   const onPointerCancel = () => {
     clearTimer();
-    didLongPress.current = false;
+    if (isHolding.current) {
+      isHolding.current = false;
+      onLongPressEnd(true);
+    }
   };
 
   return (
@@ -249,7 +421,6 @@ function AvatarButton({
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
-      onPointerLeave={onPointerCancel}
       onPointerCancel={onPointerCancel}
       onContextMenu={(e) => e.preventDefault()}
       aria-label={
