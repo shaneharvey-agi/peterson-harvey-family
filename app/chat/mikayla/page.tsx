@@ -142,8 +142,11 @@ export default function MikaylaChatPage() {
         <div ref={bottomRef} />
       </div>
 
-      {/* Composer — minimalist gold-line input per the Liquid Glass brief.
-          Pinned above BottomNav with a 25px backdrop blur. */}
+      {/* Composer — pill matches family-chat shell (radius 999, 34px send
+          button, same padding) with the Liquid Glass treatment layered on:
+          35px backdrop blur on the pill itself, 0.5px gold border. The outer
+          fixed container is fully transparent so there's no second border or
+          competing background where the bubble meets the BottomNav. */}
       <form
         onSubmit={onSubmit}
         className="fixed left-1/2"
@@ -152,37 +155,75 @@ export default function MikaylaChatPage() {
           bottom: `calc(${NAV_HEIGHT}px + env(safe-area-inset-bottom))`,
           width: '100%',
           maxWidth: 393,
-          padding: '14px 20px 16px',
-          background: 'rgba(7, 9, 15, 0.45)',
-          backdropFilter: 'blur(25px) saturate(1.1)',
-          WebkitBackdropFilter: 'blur(25px) saturate(1.1)',
+          padding: '8px 12px',
+          background: 'transparent',
           zIndex: 9,
         }}
       >
-        <input
-          ref={inputRef}
-          type="text"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          placeholder="Message Mikayla"
-          autoComplete="off"
-          autoCorrect="off"
-          spellCheck={false}
-          enterKeyHint="send"
+        <div
+          className="flex items-center"
           style={{
-            width: '100%',
-            background: 'transparent',
-            border: 'none',
-            outline: 'none',
-            color: '#EDEEF2',
-            fontSize: 15,
-            fontWeight: 500,
-            letterSpacing: 0.1,
-            padding: '6px 2px 8px',
-            borderBottom: `1px solid rgba(196, 160, 80, 0.65)`,
-            caretColor: tokens.gold,
+            gap: 8,
+            background: 'rgba(7, 9, 15, 0.45)',
+            backdropFilter: 'blur(35px) saturate(1.15)',
+            WebkitBackdropFilter: 'blur(35px) saturate(1.15)',
+            border: '0.5px solid rgba(196, 160, 80, 0.55)',
+            borderRadius: 999,
+            padding: '6px 6px 6px 14px',
           }}
-        />
+        >
+          <input
+            ref={inputRef}
+            type="text"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                onSubmit(e);
+              }
+            }}
+            placeholder={'Ask Mikayla anything\u2026'}
+            autoComplete="off"
+            autoCorrect="off"
+            spellCheck={false}
+            enterKeyHint="send"
+            className="flex-1 min-w-0"
+            style={{
+              background: 'transparent',
+              border: 'none',
+              outline: 'none',
+              color: '#FFFFFF',
+              fontSize: 14,
+              padding: '6px 0',
+              caretColor: tokens.gold,
+            }}
+          />
+          <button
+            type="submit"
+            disabled={draft.trim().length === 0}
+            aria-label="Send"
+            className="shrink-0 flex items-center justify-center"
+            style={{
+              width: 34,
+              height: 34,
+              borderRadius: '50%',
+              border: 'none',
+              background:
+                draft.trim().length > 0 ? tokens.gold : 'rgba(255,255,255,0.1)',
+              color:
+                draft.trim().length > 0
+                  ? '#07090F'
+                  : 'rgba(255,255,255,0.35)',
+              cursor: draft.trim().length > 0 ? 'pointer' : 'default',
+              transition: 'background 120ms ease, color 120ms ease',
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <path d="M4 12l16-8-6 16-2-7-8-1z" fill="currentColor" />
+            </svg>
+          </button>
+        </div>
       </form>
 
       <BottomNav active="home" />
