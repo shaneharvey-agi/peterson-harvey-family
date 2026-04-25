@@ -11,7 +11,7 @@ import { fetchPendingByRecipient } from '@/lib/queries/requests';
 import { REQUEST_SENT_EVENT } from '@/lib/mutations/requests';
 import { sendMessage } from '@/lib/mutations/chatMessages';
 import { isSpeechSupported, startSpeech, type SpeechSession } from '@/lib/speech';
-import { pulseHaptic, softBloom } from '@/lib/haptics';
+import { impact, pulseHaptic, softBloom } from '@/lib/haptics';
 
 const SUSTAINED_HAPTIC_MS = 700;
 const ACTIVE_BLOOM_MIN_TRANSCRIPT = 2; // chars — ignore stray throat-clears
@@ -58,6 +58,10 @@ export function FamilyAvatars({ members = DEFAULT_MEMBERS }: { members?: AvatarM
   const transcriptRef = useRef('');
   const speechSessionRef = useRef<SpeechSession | null>(null);
   const hapticTimerRef = useRef<number | null>(null);
+
+  // Bumping this re-keys the gold-halo flash inside VoiceBloom, replaying
+  // the 400ms scale+fade animation each time a release lands a message.
+  const [flashKey, setFlashKey] = useState(0);
 
   const stopSustainedHaptic = useCallback(() => {
     if (hapticTimerRef.current !== null) {
@@ -180,6 +184,24 @@ export function FamilyAvatars({ members = DEFAULT_MEMBERS }: { members?: AvatarM
 
     setSheetMember(null);
 
+    // Visual + haptic confirmation FIRST — the user committed by releasing,
+    // so confirm the gesture instantly. The Supabase write + SMS fan-out
+    // run behind the halo flash so latency doesn't gate the feel.
+    setFlashKey((k) => k + 1);
+    impact('medium');
+
+    // Twilio SMS — fire-and-forget. /api/sms safely no-ops when Twilio
+    // creds or the recipient's phone aren't configured (returns
+    // {sent:false, reason}), so we don't surface failures: the in-app
+    // chat_messages row is still the source of truth.
+    fetch('/api/sms', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ member, body: captured }),
+    }).catch(() => {
+      /* network blip; in-app message still lands via Supabase */
+    });
+
     const res = await sendMessage({
       threadKey: member,
       sender: CURRENT_USER,
@@ -273,7 +295,7 @@ export function FamilyAvatars({ members = DEFAULT_MEMBERS }: { members?: AvatarM
         </div>
       </div>
 
-      <VoiceBloom active={recording} />
+      <VoiceBloom active={recording} transcript={transcript} flashKey={flashKey} />
 
       <AvatarActionSheet
         member={sheetMember}
