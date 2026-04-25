@@ -9,6 +9,7 @@ import { RequestSheet } from '@/components/layout/RequestSheet';
 import { VoiceBloom } from '@/components/layout/VoiceBloom';
 import { fetchPendingByRecipient } from '@/lib/queries/requests';
 import { REQUEST_SENT_EVENT } from '@/lib/mutations/requests';
+import { sendMessage } from '@/lib/mutations/chatMessages';
 import { isSpeechSupported, startSpeech, type SpeechSession } from '@/lib/speech';
 import { pulseHaptic, softBloom } from '@/lib/haptics';
 
@@ -161,9 +162,11 @@ export function FamilyAvatars({ members = DEFAULT_MEMBERS }: { members?: AvatarM
     window.setTimeout(() => setRequestMember(member), 220);
   };
 
-  // End-of-hold handler. Snapshot the transcript synchronously, close the
-  // bloom, then ship the text to the intent classifier and route the user
-  // to the matching action.
+  // End-of-hold handler. Avatar long-press = "DM this person what I just
+  // said." The target is already unambiguous (you long-pressed Molly, you
+  // mean Molly), so we skip the intent classifier and send the transcript
+  // straight into the chat thread. For Request / Chore / Filter, Shane
+  // taps the in-sheet buttons during the hold instead of speaking.
   const endActiveBloom = async (member: FamilyMember) => {
     stopRecording('capture');
     const captured = transcriptRef.current.trim();
@@ -177,38 +180,18 @@ export function FamilyAvatars({ members = DEFAULT_MEMBERS }: { members?: AvatarM
 
     setSheetMember(null);
 
-    try {
-      const res = await fetch('/api/intent', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ transcript: captured, member }),
-      });
-      const data = await res.json();
-      routeByIntent(member, String(data?.kind ?? 'request'), String(data?.content ?? captured));
-    } catch {
-      // /api/intent down — fall through to a Request draft so the user
-      // doesn't lose what they said.
+    const res = await sendMessage({
+      threadKey: member,
+      sender: CURRENT_USER,
+      body: captured,
+    });
+    if (res.ok) {
+      showToast(`Sent to ${capitalize(member)}.`);
+      router.push(`/messages/${member}`);
+    } else {
+      // Supabase write failed — fall back to a Request draft so the
+      // words aren't lost on the floor.
       openRequestPrefilled(member, captured);
-    }
-  };
-
-  const routeByIntent = (member: FamilyMember, kind: string, content: string) => {
-    switch (kind) {
-      case 'filter':
-        setWho(member);
-        showToast(`Filtered to ${capitalize(member)}.`);
-        return;
-      case 'message':
-        // TODO(Phase C-b): wire prefill through to /messages/[who]
-        router.push(`/messages/${member}`);
-        return;
-      case 'chore':
-        // TODO(Phase C-b): wire prefill through to /chores form
-        router.push(`/chores?for=${member}&add=1`);
-        return;
-      case 'request':
-      default:
-        openRequestPrefilled(member, content);
     }
   };
 
