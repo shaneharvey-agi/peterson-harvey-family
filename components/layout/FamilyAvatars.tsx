@@ -28,7 +28,9 @@ const DEFAULT_MEMBERS: AvatarMember[] = [
   { member: 'jax',   letter: 'J', unread: 0 },
 ];
 
-const LONG_PRESS_MS = 450;
+// 260ms beats iOS Safari's ~500ms long-press image-callout timer, so our
+// Active Bloom claims the gesture before the OS share sheet can fire.
+const LONG_PRESS_MS = 260;
 const MOVE_CANCEL_PX = 8;
 
 // Treat the current device as Shane for the from_id of any outbound request
@@ -108,7 +110,9 @@ export function FamilyAvatars({ members = DEFAULT_MEMBERS }: { members?: AvatarM
 
   const openSheet = (member: FamilyMember) => {
     setSheetMember(member);
-    softBloom();
+    // softBloom() now fires inside AvatarButton at the exact long-press
+    // threshold instant, before any React state work — keeps the haptic
+    // tightly synced to the moment the app "takes" the gesture.
   };
 
   // Active Bloom — long-press fired. Open sheet, kick off Web Speech, start
@@ -374,6 +378,10 @@ function AvatarButton({
       /* old browsers */
     }
     timerRef.current = window.setTimeout(() => {
+      // Fire the confirmation haptic FIRST — before React state, before the
+      // sheet mounts — so the user feels the app claim the gesture the
+      // millisecond the threshold is hit, ahead of any iOS reaction.
+      softBloom();
       isHolding.current = true;
       onLongPressStart();
     }, LONG_PRESS_MS);
@@ -419,6 +427,12 @@ function AvatarButton({
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerCancel}
       onContextMenu={(e) => e.preventDefault()}
+      // iOS Safari fires the native "Save Image / Copy" callout from a
+      // touchstart-derived gesture even when -webkit-touch-callout is set
+      // on the parent. preventDefault on touchstart kills it without
+      // breaking pointer events (pointerdown/up still dispatch independently
+      // on iOS, so onTap and the long-press timer keep working).
+      onTouchStart={(e) => e.preventDefault()}
       aria-label={`Open messages with ${member}. Long-press for actions.`}
       className="relative flex items-center justify-center"
       style={{
@@ -473,7 +487,13 @@ function AvatarButton({
               height: '100%',
               objectFit: 'cover',
               pointerEvents: 'none',
-            }}
+              // iOS reads these on the IMG element itself — without them the
+              // OS share/copy callout fires regardless of parent styling.
+              WebkitTouchCallout: 'none',
+              WebkitUserSelect: 'none',
+              userSelect: 'none',
+              WebkitUserDrag: 'none',
+            } as React.CSSProperties}
             draggable={false}
           />
         ) : (
