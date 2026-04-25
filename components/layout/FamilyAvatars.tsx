@@ -106,10 +106,6 @@ export function FamilyAvatars({ members = DEFAULT_MEMBERS }: { members?: AvatarM
     router.replace(qs ? `/?${qs}` : '/', { scroll: false });
   };
 
-  const toggleFilter = (member: FamilyMember) => {
-    setWho(active === member ? null : member);
-  };
-
   const openSheet = (member: FamilyMember) => {
     setSheetMember(member);
     softBloom();
@@ -276,7 +272,7 @@ export function FamilyAvatars({ members = DEFAULT_MEMBERS }: { members?: AvatarM
               unread={unread}
               pendingRequests={pending[member] ?? 0}
               isActive={active === member}
-              onTap={() => toggleFilter(member)}
+              onTap={() => router.push(`/messages/${member}`)}
               onLongPressStart={() => startActiveBloom(member)}
               onLongPressEnd={(cancelled) => {
                 if (cancelled) {
@@ -423,12 +419,7 @@ function AvatarButton({
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerCancel}
       onContextMenu={(e) => e.preventDefault()}
-      aria-label={
-        isActive
-          ? `Showing only ${member}. Tap to show family. Long-press for actions.`
-          : `Show only ${member}'s calendar. Long-press for actions.`
-      }
-      aria-pressed={isActive}
+      aria-label={`Open messages with ${member}. Long-press for actions.`}
       className="relative flex items-center justify-center"
       style={{
         width: 50,
