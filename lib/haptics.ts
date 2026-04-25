@@ -31,6 +31,24 @@ export function tick(): void {
 }
 
 /**
+ * iOS UIImpactFeedbackGenerator-style impact tap. Maps to scaled vibrate
+ * durations so the call site reads the same as native Swift code; the
+ * actual feel is best-effort on browsers (Android Chrome + PWAs honor;
+ * iOS-Safari is a no-op until we wrap this in a Capacitor bridge).
+ */
+export type ImpactLevel = 'light' | 'medium' | 'heavy';
+
+const IMPACT_MS: Record<ImpactLevel, number> = {
+  light: 6,
+  medium: 12,
+  heavy: 22,
+};
+
+export function impact(level: ImpactLevel = 'medium'): void {
+  vibrate(IMPACT_MS[level]);
+}
+
+/**
  * "Flutter" — three short 15ms pulses with brief gaps. Mirrors the
  * flag-wave gesture the M signature performs on activation.
  */

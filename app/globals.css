@@ -103,12 +103,13 @@ body {
   transform-origin: center;
 }
 
-/* Pulsing gold halo that sits behind the M button when listening. */
+/* Gold Intent Orb behind the M button while listening. Tuned to a slow
+   silk-in-light-breeze cadence so it pairs with the 4s flag-wave on the M. */
 @keyframes morbHaloPulse {
-  0%, 100% { opacity: 0.45; transform: translateX(-50%) scale(0.88); }
-  50%      { opacity: 0.95; transform: translateX(-50%) scale(1.18); }
+  0%, 100% { opacity: 0.55; transform: translateX(-50%) scale(0.92); }
+  50%      { opacity: 0.95; transform: translateX(-50%) scale(1.14); }
 }
-.morb-halo-pulse { animation: morbHaloPulse 1.6s ease-in-out infinite; }
+.morb-halo-pulse { animation: morbHaloPulse 2.4s ease-in-out infinite; }
 
 
 @keyframes cloudDrift {
