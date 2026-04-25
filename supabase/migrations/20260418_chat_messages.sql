@@ -28,3 +28,23 @@ create index if not exists chat_messages_unread_idx
 
 comment on table public.chat_messages is
   'SMS-style threaded messages. thread_key = family|<member>|mikayla.';
+
+-- Open anon RLS so the Next.js app (anon key) can read/write. Tighten
+-- once auth lands. Same pattern as the requests table.
+alter table public.chat_messages enable row level security;
+
+drop policy if exists "chat_messages_anon_read" on public.chat_messages;
+create policy "chat_messages_anon_read"
+  on public.chat_messages for select
+  using (true);
+
+drop policy if exists "chat_messages_anon_insert" on public.chat_messages;
+create policy "chat_messages_anon_insert"
+  on public.chat_messages for insert
+  with check (true);
+
+drop policy if exists "chat_messages_anon_update" on public.chat_messages;
+create policy "chat_messages_anon_update"
+  on public.chat_messages for update
+  using (true)
+  with check (true);
