@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { BottomNav } from '@/components/layout/BottomNav';
 import { tokens } from '@/lib/design-tokens';
 import { impact } from '@/lib/haptics';
@@ -18,8 +19,23 @@ interface LocalMessage {
 }
 
 export default function MikaylaChatPage() {
+  // useSearchParams() forces a CSR bailout in Next 14 — wrap in Suspense so
+  // the static shell can still prerender while the dynamic param resolves.
+  return (
+    <Suspense fallback={null}>
+      <MikaylaChatPageInner />
+    </Suspense>
+  );
+}
+
+function MikaylaChatPageInner() {
+  const searchParams = useSearchParams();
+  // M Orb fallback path lands here with ?prefill=<transcript> when intent
+  // routing can't dispatch directly — seed the composer so the captured
+  // words are visible and one tap from being sent.
+  const prefill = searchParams?.get('prefill') ?? '';
   const [messages, setMessages] = useState<LocalMessage[]>([]);
-  const [draft, setDraft] = useState('');
+  const [draft, setDraft] = useState(prefill);
   const [isTyping, setIsTyping] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);

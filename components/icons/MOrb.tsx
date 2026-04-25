@@ -5,27 +5,38 @@ import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { tokens } from '@/lib/design-tokens';
 import { flutter, impact } from '@/lib/haptics';
-import { handleIntent } from '@/lib/intent';
+import { isSpeechSupported, startSpeech, type SpeechSession } from '@/lib/speech';
+import { sendMessage } from '@/lib/mutations/chatMessages';
 
 const HOLD_MS = 260;
 const WAVE_CYCLE_MS = 4000;
+const MIN_TRANSCRIPT_CHARS = 2; // ignore stray throat-clears
 const BAR_HEIGHTS = [3, 6, 9, 5, 8, 4];
 const BAR_DELAYS = ['0s', '0.1s', '0.2s', '0.15s', '0.05s', '0.25s'];
 
-export type MOrbAction = 'message' | 'voice';
+type Recipient = 'shane' | 'molly' | 'evey' | 'jax' | 'family';
+type IntentKind = 'request' | 'message' | 'chore' | 'filter';
 
-interface MOrbProps {
-  /** Override the dual-input behavior. Defaults to routing tap → /chat/mikayla
-   *  and routing voice via handleIntent(). */
-  onAction?: (kind: MOrbAction) => void;
+interface IntentResponse {
+  kind: IntentKind;
+  content: string;
+  recipient?: Recipient;
+  source: 'haiku' | 'fallback';
 }
 
-export function MOrb({ onAction }: MOrbProps = {}) {
+const CURRENT_USER = 'shane';
+
+export function MOrb() {
   const router = useRouter();
   const [holding, setHolding] = useState(false);
+  const [transcript, setTranscript] = useState('');
+  const [flashKey, setFlashKey] = useState(0);
   const [portalReady, setPortalReady] = useState(false);
+
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const heldRef = useRef(false);
+  const transcriptRef = useRef('');
+  const speechSessionRef = useRef<SpeechSession | null>(null);
 
   // Portal target only available after hydration.
   useEffect(() => setPortalReady(true), []);
@@ -46,10 +57,40 @@ export function MOrb({ onAction }: MOrbProps = {}) {
     };
   }, [holding]);
 
+  const stopSpeechSession = useCallback((mode: 'capture' | 'discard') => {
+    const session = speechSessionRef.current;
+    speechSessionRef.current = null;
+    if (!session) return;
+    if (mode === 'capture') session.stop();
+    else session.abort();
+  }, []);
+
   const beginListen = useCallback(() => {
     heldRef.current = true;
     setHolding(true);
     impact('medium');
+    transcriptRef.current = '';
+    setTranscript('');
+    if (!isSpeechSupported()) return;
+    speechSessionRef.current = startSpeech({
+      onInterim: (text) => {
+        transcriptRef.current = text;
+        setTranscript(text);
+      },
+      onFinal: (text) => {
+        // iOS Safari finalises late: when the user releases mid-utterance,
+        // session.stop() fires onFinal with only isFinal-marked chunks,
+        // which is shorter than the live interim+final string we were
+        // showing. Never let final shrink the buffer.
+        if (text.trim().length > transcriptRef.current.trim().length) {
+          transcriptRef.current = text;
+        }
+      },
+      onError: () => {
+        // mic permission denied / API hiccup — collapse silently. The user
+        // can still tap the orb to navigate to /chat/mikayla as a fallback.
+      },
+    });
   }, []);
 
   const clearTimer = () => {
@@ -59,21 +100,59 @@ export function MOrb({ onAction }: MOrbProps = {}) {
     }
   };
 
-  const fireAction = useCallback(
-    (kind: MOrbAction) => {
-      if (onAction) {
-        onAction(kind);
+  const dispatchIntent = useCallback(
+    async (captured: string) => {
+      // Confirm-and-fly: halo + medium impact fire on the same animation
+      // frame as the dispatch decision, so release feels like the message
+      // physically leaves the device.
+      setFlashKey((k) => k + 1);
+      impact('medium');
+
+      let resolved: IntentResponse;
+      try {
+        const resp = await fetch('/api/intent', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ transcript: captured }),
+        });
+        resolved = (await resp.json()) as IntentResponse;
+      } catch {
+        // Network blip — fall back to dropping the user into the Mikayla
+        // chat with the transcript visible so words aren't lost.
+        router.push(`/chat/mikayla?prefill=${encodeURIComponent(captured)}`);
         return;
       }
-      // Default behavior — tap routes to chat, voice runs the intent stub.
-      if (kind === 'message') {
-        router.push('/chat/mikayla');
-      } else {
-        const intent = handleIntent('');
-        if (intent.route) router.push(intent.route);
+
+      const { kind, content, recipient } = resolved;
+      const body = (content || captured).trim();
+
+      // Message intent with a named recipient → write to chat_messages,
+      // fire SMS in the background, navigate to the thread immediately.
+      if (kind === 'message' && recipient && recipient !== CURRENT_USER) {
+        router.push(`/messages/${recipient}`);
+        fetch('/api/sms', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ member: recipient, body }),
+        }).catch(() => {
+          /* in-app message still lands via Supabase */
+        });
+        sendMessage({
+          threadKey: recipient,
+          sender: CURRENT_USER,
+          body,
+        }).catch(() => {
+          /* Supabase write failed — message thread page will reflect on next fetch */
+        });
+        return;
       }
+
+      // Other kinds fall back to the Mikayla chat with the transcript
+      // pre-filled so Shane can finish what he meant in chat. Eventually
+      // chore/filter/request will route to their own surfaces.
+      router.push(`/chat/mikayla?prefill=${encodeURIComponent(body)}`);
     },
-    [onAction, router]
+    [router],
   );
 
   const onPointerDown = useCallback(
@@ -83,7 +162,7 @@ export function MOrb({ onAction }: MOrbProps = {}) {
       clearTimer();
       holdTimer.current = setTimeout(beginListen, HOLD_MS);
     },
-    [beginListen]
+    [beginListen],
   );
 
   const onPointerUp = useCallback(
@@ -94,12 +173,27 @@ export function MOrb({ onAction }: MOrbProps = {}) {
         /* already released */
       }
       clearTimer();
-      if (heldRef.current) {
-        setHolding(false);
-        fireAction('voice');
+      if (!heldRef.current) return;
+
+      // Snapshot the transcript synchronously BEFORE stopping the session,
+      // because session.stop() may emit a shorter onFinal that the merge
+      // logic in beginListen will discard — but we want today's value.
+      stopSpeechSession('capture');
+      const captured = transcriptRef.current.trim();
+      transcriptRef.current = '';
+      setTranscript('');
+      setHolding(false);
+      heldRef.current = false;
+
+      if (captured.length < MIN_TRANSCRIPT_CHARS) {
+        // No real speech — just collapse the bloom. Don't penalize the
+        // user with a bogus toast or stray navigation.
+        return;
       }
+
+      void dispatchIntent(captured);
     },
-    [fireAction]
+    [dispatchIntent, stopSpeechSession],
   );
 
   const onPointerCancel = useCallback(() => {
@@ -107,14 +201,25 @@ export function MOrb({ onAction }: MOrbProps = {}) {
     if (heldRef.current) {
       heldRef.current = false;
       setHolding(false);
+      stopSpeechSession('discard');
+      transcriptRef.current = '';
+      setTranscript('');
     }
-  }, []);
+  }, [stopSpeechSession]);
 
   const handleClick = useCallback(() => {
     if (heldRef.current) return; // press-hold consumed the gesture
     impact('light');
-    fireAction('message');
-  }, [fireAction]);
+    router.push('/chat/mikayla');
+  }, [router]);
+
+  // Cleanup on unmount.
+  useEffect(() => {
+    return () => {
+      stopSpeechSession('discard');
+      clearTimer();
+    };
+  }, [stopSpeechSession]);
 
   // 20% dim overlay portaled to <body> so it sits below BottomNav (z-10) and
   // dims everything else without dimming the orb cluster itself.
@@ -133,13 +238,83 @@ export function MOrb({ onAction }: MOrbProps = {}) {
               opacity: 1,
             }}
           />,
-          document.body
+          document.body,
+        )
+      : null;
+
+  // Ghosted live transcript + post-release halo flash. Portaled to <body>
+  // so they sit above the orb cluster and aren't clipped by the bottom-nav
+  // container's overflow.
+  const overlay =
+    portalReady && (holding || flashKey > 0)
+      ? createPortal(
+          <div
+            aria-hidden="true"
+            style={{
+              position: 'fixed',
+              inset: 0,
+              pointerEvents: 'none',
+              zIndex: 11,
+            }}
+          >
+            {holding && (
+              <div
+                aria-live="polite"
+                style={{
+                  position: 'absolute',
+                  top: 'calc(env(safe-area-inset-top) + 96px)',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  maxWidth: 'min(360px, 86vw)',
+                  padding: '0 16px',
+                  fontSize: 18,
+                  fontStyle: 'italic',
+                  fontWeight: 500,
+                  lineHeight: 1.4,
+                  letterSpacing: '0.2px',
+                  textAlign: 'center',
+                  color: transcript
+                    ? 'rgba(240, 224, 181, 0.95)'
+                    : 'rgba(196, 160, 80, 0.55)',
+                  textShadow: '0 1px 12px rgba(7,9,15,0.85)',
+                  transition: 'color 200ms ease',
+                }}
+              >
+                {transcript || 'Listening…'}
+              </div>
+            )}
+            {flashKey > 0 && (
+              <span
+                key={flashKey}
+                style={{
+                  position: 'absolute',
+                  bottom: 'calc(env(safe-area-inset-bottom) + 56px)',
+                  left: '50%',
+                  width: 200,
+                  height: 200,
+                  marginLeft: -100,
+                  borderRadius: '50%',
+                  border: `0.5px solid ${tokens.gold}`,
+                  boxShadow: `0 0 24px ${tokens.gold}, 0 0 48px ${tokens.gold}66`,
+                  animation: 'morb-halo-flash 400ms ease-out forwards',
+                }}
+              />
+            )}
+            <style>{`
+              @keyframes morb-halo-flash {
+                0%   { transform: scale(0.6); opacity: 1; }
+                100% { transform: scale(1.4); opacity: 0; }
+              }
+            `}</style>
+          </div>,
+          document.body,
         )
       : null;
 
   return (
     <>
       {dimOverlay}
+      {overlay}
 
       <div
         style={{
@@ -153,8 +328,8 @@ export function MOrb({ onAction }: MOrbProps = {}) {
         }}
       >
         {/* Gold Intent Orb — frosted disc behind the button with a 40px
-            backdrop blur and a slow 2.4s gold pulse. Only mounted while
-            holding so idle stays zero-cost and crisp. */}
+            backdrop blur. Only mounted while holding so idle stays
+            zero-cost and crisp. */}
         {holding && (
           <span
             aria-hidden="true"
@@ -195,7 +370,6 @@ export function MOrb({ onAction }: MOrbProps = {}) {
             boxShadow: holding
               ? `0 0 0 1.5px ${tokens.gold}, 0 16px 40px rgba(196,160,80,0.55), 0 8px 18px rgba(0,0,0,0.45)`
               : `0 0 0 1.5px ${tokens.gold}, 0 4px 12px rgba(196,160,80,0.30)`,
-            // Physical elevation = scale 1.1× per spec. Spring-eased.
             transform: holding ? 'scale(1.1)' : 'scale(1)',
             transformOrigin: 'center',
             transition:
@@ -203,8 +377,9 @@ export function MOrb({ onAction }: MOrbProps = {}) {
             touchAction: 'manipulation',
             WebkitUserSelect: 'none',
             userSelect: 'none',
+            WebkitTapHighlightColor: 'transparent',
             zIndex: 1,
-          }}
+          } as React.CSSProperties}
         >
           {/* Bold M as inline SVG <text> so the flag-wave filter can apply.
               Sine-wave-flavored displacement via feTurbulence + animated
@@ -235,9 +410,6 @@ export function MOrb({ onAction }: MOrbProps = {}) {
                     stitchTiles="stitch"
                     result="turb"
                   >
-                    {/* Drift the noise field slowly L→R by oscillating the
-                        x-component of baseFrequency — the visible ripple
-                        appears to travel through the M. */}
                     <animate
                       attributeName="baseFrequency"
                       dur="4s"
@@ -255,9 +427,6 @@ export function MOrb({ onAction }: MOrbProps = {}) {
                     xChannelSelector="R"
                     yChannelSelector="G"
                   >
-                    {/* Two amplitude peaks per 4s cycle, asymmetric, eased
-                        with cubic-bezier so it reads as wind gusting through
-                        silk rather than a sine pulse. */}
                     <animate
                       attributeName="scale"
                       dur="4s"
@@ -285,7 +454,7 @@ export function MOrb({ onAction }: MOrbProps = {}) {
             </text>
           </svg>
 
-          {/* Bottom strip — cross-fades from the waveform bars (idle, the
+          {/* Bottom strip — cross-fades from waveform bars (idle, the
               "speak to Mikayla" affordance) to the "Mikayla" wordmark
               (listening, identity confirmation). */}
           <div

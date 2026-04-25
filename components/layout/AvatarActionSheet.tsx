@@ -29,16 +29,10 @@ export function AvatarActionSheet({
   member,
   onAction,
   onClose,
-  recording = false,
-  transcript = '',
 }: {
   member: FamilyMember | null;
   onAction: (action: AvatarAction) => void;
   onClose: () => void;
-  /** Phase C — true while the user is still holding and the mic is live. */
-  recording?: boolean;
-  /** Phase C — interim+final transcript to render as a ghosted line. */
-  transcript?: string;
 }) {
   // Trigger slide-up animation by toggling mounted state after paint.
   const [visible, setVisible] = useState(false);
@@ -158,29 +152,6 @@ export function AvatarActionSheet({
             onClick={() => onAction('filter')}
           />
         </div>
-
-        {/* Active Bloom transcript — only mounts while recording. Ghosted
-            italic so it reads as live caption, not as a chat bubble. */}
-        {recording && (
-          <div
-            className="px-5 pb-3"
-            aria-live="polite"
-            style={{
-              minHeight: 28,
-              fontSize: 13,
-              fontStyle: 'italic',
-              lineHeight: 1.35,
-              color: transcript
-                ? 'rgba(196,160,80,0.85)'
-                : 'rgba(196,160,80,0.45)',
-              transition: 'color 200ms ease',
-              textAlign: 'center',
-              letterSpacing: '0.2px',
-            }}
-          >
-            {transcript || 'Listening\u2026'}
-          </div>
-        )}
 
         <div className="px-4 pt-1">
           <button

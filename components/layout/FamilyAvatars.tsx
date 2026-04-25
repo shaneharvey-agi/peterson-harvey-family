@@ -6,15 +6,9 @@ import { tokens, type FamilyMember, familyBg, familyColor, familyText } from '@/
 import { parseMemberFilter } from '@/lib/events/filter';
 import { AvatarActionSheet, type AvatarAction } from '@/components/layout/AvatarActionSheet';
 import { RequestSheet } from '@/components/layout/RequestSheet';
-import { VoiceBloom } from '@/components/layout/VoiceBloom';
 import { fetchPendingByRecipient } from '@/lib/queries/requests';
 import { REQUEST_SENT_EVENT } from '@/lib/mutations/requests';
-import { sendMessage } from '@/lib/mutations/chatMessages';
-import { isSpeechSupported, startSpeech, type SpeechSession } from '@/lib/speech';
-import { impact, pulseHaptic, softBloom } from '@/lib/haptics';
-
-const SUSTAINED_HAPTIC_MS = 700;
-const ACTIVE_BLOOM_MIN_TRANSCRIPT = 2; // chars — ignore stray throat-clears
+import { softBloom } from '@/lib/haptics';
 
 type AvatarMember = {
   member: FamilyMember;
@@ -30,12 +24,10 @@ const DEFAULT_MEMBERS: AvatarMember[] = [
 ];
 
 // 260ms beats iOS Safari's ~500ms long-press image-callout timer, so our
-// Active Bloom claims the gesture before the OS share sheet can fire.
+// action sheet claims the gesture before the OS share sheet can fire.
 const LONG_PRESS_MS = 260;
 const MOVE_CANCEL_PX = 8;
 
-// Treat the current device as Shane for the from_id of any outbound request
-// until auth lands.
 const CURRENT_USER: FamilyMember = 'shane';
 
 export function FamilyAvatars({ members = DEFAULT_MEMBERS }: { members?: AvatarMember[] }) {
@@ -49,40 +41,6 @@ export function FamilyAvatars({ members = DEFAULT_MEMBERS }: { members?: AvatarM
   const [pending, setPending] = useState<Record<FamilyMember, number>>({
     shane: 0, molly: 0, evey: 0, jax: 0,
   });
-
-  // Active Bloom voice state. `recording` drives the bloom orb + ghosted
-  // transcript line. The ref shadows the state so the release handler can
-  // read the latest text synchronously without waiting for React.
-  const [recording, setRecording] = useState(false);
-  const [transcript, setTranscript] = useState('');
-  const transcriptRef = useRef('');
-  const speechSessionRef = useRef<SpeechSession | null>(null);
-  const hapticTimerRef = useRef<number | null>(null);
-
-  // Bumping this re-keys the gold-halo flash inside VoiceBloom, replaying
-  // the 400ms scale+fade animation each time a release lands a message.
-  const [flashKey, setFlashKey] = useState(0);
-
-  const stopSustainedHaptic = useCallback(() => {
-    if (hapticTimerRef.current !== null) {
-      window.clearInterval(hapticTimerRef.current);
-      hapticTimerRef.current = null;
-    }
-  }, []);
-
-  const stopRecording = useCallback(
-    (mode: 'capture' | 'discard') => {
-      stopSustainedHaptic();
-      const session = speechSessionRef.current;
-      speechSessionRef.current = null;
-      if (session) {
-        if (mode === 'capture') session.stop();
-        else session.abort();
-      }
-      setRecording(false);
-    },
-    [stopSustainedHaptic],
-  );
 
   // Pull pending request counts for the gold "owe-them-an-answer" badge.
   // Re-fetches whenever a request is sent anywhere in the app.
@@ -113,128 +71,13 @@ export function FamilyAvatars({ members = DEFAULT_MEMBERS }: { members?: AvatarM
     router.replace(qs ? `/?${qs}` : '/', { scroll: false });
   };
 
-  const openSheet = (member: FamilyMember) => {
+  const openSheet = useCallback((member: FamilyMember) => {
     setSheetMember(member);
-    // softBloom() now fires inside AvatarButton at the exact long-press
-    // threshold instant, before any React state work — keeps the haptic
-    // tightly synced to the moment the app "takes" the gesture.
-  };
+  }, []);
 
-  // Active Bloom — long-press fired. Open sheet, kick off Web Speech, start
-  // the sustained "soft engine" haptic loop. If Web Speech isn't supported
-  // (Firefox, some mobile browsers), we still open the sheet — we just don't
-  // record anything.
-  const startActiveBloom = (member: FamilyMember) => {
-    openSheet(member);
-    transcriptRef.current = '';
-    setTranscript('');
-    if (!isSpeechSupported()) return;
-    setRecording(true);
-    speechSessionRef.current = startSpeech({
-      onInterim: (text) => {
-        transcriptRef.current = text;
-        setTranscript(text);
-      },
-      onFinal: (text) => {
-        // iOS Safari finalises late: when the user releases mid-utterance,
-        // session.stop() fires onFinal with only the isFinal-marked chunks,
-        // which is often shorter than the live interim+final string we were
-        // showing. Never let the final callback shrink what onInterim already
-        // captured — otherwise `captured` ends up empty and the message
-        // silently fails to send.
-        if (text.trim().length > transcriptRef.current.trim().length) {
-          transcriptRef.current = text;
-        }
-      },
-      onError: () => {
-        // mic permission denied / API hiccup — collapse silently to standard
-        // tap-to-pick mode rather than crashing the gesture
-        stopRecording('discard');
-      },
-    });
-    if (speechSessionRef.current) {
-      // Sustained "soft engine" pulse — gentle every 700ms while the user
-      // keeps holding. Less aggressive than the MOrb 4s flutter so it reads
-      // as ambient warmth, not a metronome.
-      hapticTimerRef.current = window.setInterval(pulseHaptic, SUSTAINED_HAPTIC_MS);
-    }
-  };
-
-  const closeSheet = () => {
-    if (recording) stopRecording('discard');
-    setSheetMember(null);
-    setTranscript('');
-    transcriptRef.current = '';
-  };
+  const closeSheet = () => setSheetMember(null);
 
   const closeRequest = () => setRequestMember(null);
-
-  const openRequestPrefilled = (member: FamilyMember, content: string) => {
-    setRequestPrefill(content);
-    window.setTimeout(() => setRequestMember(member), 220);
-  };
-
-  // End-of-hold handler. Avatar long-press = "DM this person what I just
-  // said." The target is already unambiguous (you long-pressed Molly, you
-  // mean Molly), so we skip the intent classifier and send the transcript
-  // straight into the chat thread. For Request / Chore / Filter, Shane
-  // taps the in-sheet buttons during the hold instead of speaking.
-  const endActiveBloom = (member: FamilyMember) => {
-    stopRecording('capture');
-    const captured = transcriptRef.current.trim();
-    setTranscript('');
-    transcriptRef.current = '';
-
-    if (captured.length < ACTIVE_BLOOM_MIN_TRANSCRIPT) {
-      // No real speech — leave the action sheet open for tap-to-pick.
-      return;
-    }
-
-    setSheetMember(null);
-
-    // Confirm-and-fly: halo + medium impact + immediate router push happen on
-    // the same animation frame so the release feels like the message
-    // physically leaves the device. Supabase + Twilio run in the background;
-    // the destination thread page does its own fetch and will see the new
-    // row by the time it mounts.
-    setFlashKey((k) => k + 1);
-    impact('medium');
-    router.push(`/messages/${member}`);
-
-    // Twilio SMS — fire-and-forget. /api/sms safely no-ops when Twilio
-    // creds or the recipient's phone aren't configured.
-    fetch('/api/sms', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ member, body: captured }),
-    }).catch(() => {
-      /* network blip; in-app message still lands via Supabase */
-    });
-
-    sendMessage({
-      threadKey: member,
-      sender: CURRENT_USER,
-      body: captured,
-    }).then((res) => {
-      if (res.ok) {
-        showToast(`Sent to ${capitalize(member)}.`);
-      } else {
-        // Supabase write failed — surface a tap-to-retry toast so the
-        // captured words aren't lost on the floor. User is already on the
-        // destination thread by now, so the Request-sheet fallback would
-        // be jarring; toast on the new screen is the right surface.
-        showToast(`Couldn't send: ${res.error}`);
-      }
-    });
-  };
-
-  // Make sure mic + haptic loop don't outlive the component (e.g. nav-away
-  // mid-hold). Keeps Safari happy.
-  useEffect(() => {
-    return () => {
-      stopRecording('discard');
-    };
-  }, [stopRecording]);
 
   const handleAction = (action: AvatarAction) => {
     const member = sheetMember;
@@ -293,27 +136,16 @@ export function FamilyAvatars({ members = DEFAULT_MEMBERS }: { members?: AvatarM
               pendingRequests={pending[member] ?? 0}
               isActive={active === member}
               onTap={() => router.push(`/messages/${member}`)}
-              onLongPressStart={() => startActiveBloom(member)}
-              onLongPressEnd={(cancelled) => {
-                if (cancelled) {
-                  stopRecording('discard');
-                } else {
-                  endActiveBloom(member);
-                }
-              }}
+              onLongPress={() => openSheet(member)}
             />
           ))}
         </div>
       </div>
 
-      <VoiceBloom active={recording} transcript={transcript} flashKey={flashKey} />
-
       <AvatarActionSheet
         member={sheetMember}
         onAction={handleAction}
         onClose={closeSheet}
-        recording={recording}
-        transcript={transcript}
       />
 
       <RequestSheet
@@ -357,8 +189,7 @@ function AvatarButton({
   pendingRequests,
   isActive,
   onTap,
-  onLongPressStart,
-  onLongPressEnd,
+  onLongPress,
 }: {
   member: FamilyMember;
   letter: string;
@@ -366,8 +197,7 @@ function AvatarButton({
   pendingRequests: number;
   isActive: boolean;
   onTap: () => void;
-  onLongPressStart: () => void;
-  onLongPressEnd: (cancelled: boolean) => void;
+  onLongPress: () => void;
 }) {
   const [photoOk, setPhotoOk] = useState(true);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
@@ -403,21 +233,17 @@ function AvatarButton({
     isHolding.current = false;
     startPos.current = { x: e.clientX, y: e.clientY };
     clearTimer();
-    // Capture the pointer so the gesture survives the AvatarActionSheet
-    // sliding up over the avatar — without this, pointerup fires on the
-    // sheet and we'd never know the user released.
     try {
       e.currentTarget.setPointerCapture?.(e.pointerId);
     } catch {
       /* old browsers */
     }
     timerRef.current = window.setTimeout(() => {
-      // Fire the confirmation haptic FIRST — before React state, before the
-      // sheet mounts — so the user feels the app claim the gesture the
-      // millisecond the threshold is hit, ahead of any iOS reaction.
+      // Confirmation haptic fires the millisecond the threshold is hit, ahead
+      // of any iOS reaction or React state work.
       softBloom();
       isHolding.current = true;
-      onLongPressStart();
+      onLongPress();
     }, LONG_PRESS_MS);
   };
 
@@ -439,7 +265,7 @@ function AvatarButton({
     }
     if (isHolding.current) {
       isHolding.current = false;
-      onLongPressEnd(false);
+      // Long-press already opened the sheet on threshold; nothing to do here.
     } else {
       onTap();
     }
@@ -447,10 +273,7 @@ function AvatarButton({
 
   const onPointerCancel = () => {
     clearTimer();
-    if (isHolding.current) {
-      isHolding.current = false;
-      onLongPressEnd(true);
-    }
+    isHolding.current = false;
   };
 
   return (
@@ -519,8 +342,6 @@ function AvatarButton({
               height: '100%',
               objectFit: 'cover',
               pointerEvents: 'none',
-              // iOS reads these on the IMG element itself — without them the
-              // OS share/copy callout fires regardless of parent styling.
               WebkitTouchCallout: 'none',
               WebkitUserSelect: 'none',
               userSelect: 'none',
