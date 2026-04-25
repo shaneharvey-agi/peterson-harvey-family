@@ -1,10 +1,13 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { tokens, type FamilyMember, familyBg, familyColor, familyText } from '@/lib/design-tokens';
 import { parseMemberFilter } from '@/lib/events/filter';
 import { AvatarActionSheet, type AvatarAction } from '@/components/layout/AvatarActionSheet';
+import { RequestSheet } from '@/components/layout/RequestSheet';
+import { fetchPendingByRecipient } from '@/lib/queries/requests';
+import { REQUEST_SENT_EVENT } from '@/lib/mutations/requests';
 
 type AvatarMember = {
   member: FamilyMember;
@@ -22,12 +25,41 @@ const DEFAULT_MEMBERS: AvatarMember[] = [
 const LONG_PRESS_MS = 450;
 const MOVE_CANCEL_PX = 8;
 
+// Treat the current device as Shane for the from_id of any outbound request
+// until auth lands.
+const CURRENT_USER: FamilyMember = 'shane';
+
 export function FamilyAvatars({ members = DEFAULT_MEMBERS }: { members?: AvatarMember[] }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const active = parseMemberFilter(searchParams?.get('who'));
   const [sheetMember, setSheetMember] = useState<FamilyMember | null>(null);
+  const [requestMember, setRequestMember] = useState<FamilyMember | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [pending, setPending] = useState<Record<FamilyMember, number>>({
+    shane: 0, molly: 0, evey: 0, jax: 0,
+  });
+
+  // Pull pending request counts for the gold "owe-them-an-answer" badge.
+  // Re-fetches whenever a request is sent anywhere in the app.
+  useEffect(() => {
+    let alive = true;
+    const refresh = async () => {
+      const counts = await fetchPendingByRecipient();
+      if (alive) setPending(counts);
+    };
+    refresh();
+    const onSent = () => refresh();
+    if (typeof window !== 'undefined') {
+      window.addEventListener(REQUEST_SENT_EVENT, onSent);
+    }
+    return () => {
+      alive = false;
+      if (typeof window !== 'undefined') {
+        window.removeEventListener(REQUEST_SENT_EVENT, onSent);
+      }
+    };
+  }, []);
 
   const setWho = (member: FamilyMember | null) => {
     const params = new URLSearchParams(searchParams?.toString() ?? '');
@@ -49,6 +81,7 @@ export function FamilyAvatars({ members = DEFAULT_MEMBERS }: { members?: AvatarM
   };
 
   const closeSheet = () => setSheetMember(null);
+  const closeRequest = () => setRequestMember(null);
 
   const handleAction = (action: AvatarAction) => {
     const member = sheetMember;
@@ -64,10 +97,16 @@ export function FamilyAvatars({ members = DEFAULT_MEMBERS }: { members?: AvatarM
       case 'message':
         router.push(`/messages/${member}`);
         break;
-      case 'remind':
-        showToast(`I\u2019ll nudge you about ${capitalize(member)}.`);
+      case 'request':
+        // Slight delay so the action sheet's slide-down clears the screen
+        // before the request card slides up — feels like a hand-off, not a swap.
+        window.setTimeout(() => setRequestMember(member), 220);
         break;
     }
+  };
+
+  const handleRequestSent = (sentTo: FamilyMember) => {
+    showToast(`Sent to ${capitalize(sentTo)}.`);
   };
 
   function showToast(msg: string) {
@@ -98,6 +137,7 @@ export function FamilyAvatars({ members = DEFAULT_MEMBERS }: { members?: AvatarM
               member={member}
               letter={letter}
               unread={unread}
+              pendingRequests={pending[member] ?? 0}
               isActive={active === member}
               onTap={() => toggleFilter(member)}
               onLongPress={() => openSheet(member)}
@@ -110,6 +150,13 @@ export function FamilyAvatars({ members = DEFAULT_MEMBERS }: { members?: AvatarM
         member={sheetMember}
         onAction={handleAction}
         onClose={closeSheet}
+      />
+
+      <RequestSheet
+        member={requestMember}
+        fromMember={CURRENT_USER}
+        onClose={closeRequest}
+        onSent={handleRequestSent}
       />
 
       {toast && (
@@ -142,6 +189,7 @@ function AvatarButton({
   member,
   letter,
   unread,
+  pendingRequests,
   isActive,
   onTap,
   onLongPress,
@@ -149,6 +197,7 @@ function AvatarButton({
   member: FamilyMember;
   letter: string;
   unread: number;
+  pendingRequests: number;
   isActive: boolean;
   onTap: () => void;
   onLongPress: () => void;
@@ -224,6 +273,19 @@ function AvatarButton({
         userSelect: 'none',
       }}
     >
+      {pendingRequests > 0 && (
+        <span
+          aria-hidden
+          className="pulse-gold absolute"
+          style={{
+            inset: -3,
+            borderRadius: '50%',
+            border: `1px solid ${tokens.gold}`,
+            boxShadow: `0 0 12px rgba(196,160,80,0.55)`,
+            pointerEvents: 'none',
+          }}
+        />
+      )}
       <span
         className="flex items-center justify-center"
         style={{
@@ -283,6 +345,30 @@ function AvatarButton({
           }}
         >
           {unread}
+        </span>
+      )}
+      {pendingRequests > 0 && (
+        <span
+          className="absolute flex items-center justify-center"
+          style={{
+            bottom: -2,
+            right: -2,
+            minWidth: 18,
+            height: 18,
+            paddingLeft: 4,
+            paddingRight: 4,
+            borderRadius: 999,
+            background: tokens.gold,
+            color: '#07090F',
+            fontSize: 10,
+            fontWeight: 800,
+            border: `2px solid ${tokens.bg}`,
+            lineHeight: 1,
+            boxShadow: '0 0 10px rgba(196,160,80,0.5)',
+          }}
+          aria-label={`${pendingRequests} pending request${pendingRequests > 1 ? 's' : ''}`}
+        >
+          {pendingRequests}
         </span>
       )}
     </button>

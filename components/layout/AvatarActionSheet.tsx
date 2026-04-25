@@ -9,7 +9,7 @@ import {
   type FamilyMember,
 } from '@/lib/design-tokens';
 
-export type AvatarAction = 'message' | 'chore' | 'filter' | 'remind';
+export type AvatarAction = 'message' | 'request' | 'chore' | 'filter';
 
 const NAMES: Record<FamilyMember, string> = {
   shane: 'Shane',
@@ -97,27 +97,30 @@ export function AvatarActionSheet({
           }}
         />
 
+        {/* Header — circular profile photo (0.5px gold) anchored top-left,
+            name to the right in the gold-shimmer wordmark treatment. */}
         <div className="flex items-center gap-3 px-5 pb-3">
-          <span
-            className="flex items-center justify-center shrink-0"
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: '50%',
-              background: familyBg(member),
-              border: `2px solid ${accent}`,
-              color: familyText(member),
-              fontSize: 16,
-              fontWeight: 700,
-            }}
-          >
-            {LETTERS[member]}
-          </span>
-          <div>
-            <div className="text-[15px] font-semibold text-white">
+          <HeaderAvatar member={member} />
+          <div className="min-w-0">
+            <div
+              className="wordmark"
+              style={{
+                fontSize: 17,
+                fontWeight: 800,
+                letterSpacing: '0.4px',
+                lineHeight: 1.1,
+              }}
+            >
               {NAMES[member]}
             </div>
-            <div className="text-[11px] text-white/45 uppercase tracking-[1px]">
+            <div
+              className="text-[10px] uppercase"
+              style={{
+                color: 'rgba(196,160,80,0.55)',
+                letterSpacing: '1.4px',
+                marginTop: 2,
+              }}
+            >
               Quick actions
             </div>
           </div>
@@ -131,6 +134,12 @@ export function AvatarActionSheet({
             onClick={() => onAction('message')}
           />
           <ActionRow
+            label="Request"
+            hint={`Ask ${NAMES[member]} for something`}
+            icon={<RequestIcon color={tokens.gold} />}
+            onClick={() => onAction('request')}
+          />
+          <ActionRow
             label="Add chore"
             hint={`Assign to ${NAMES[member]}`}
             icon={<ChoreIcon color={accent} />}
@@ -141,12 +150,6 @@ export function AvatarActionSheet({
             hint={`Only show ${NAMES[member]}'s day`}
             icon={<FilterIcon color={accent} />}
             onClick={() => onAction('filter')}
-          />
-          <ActionRow
-            label="Remind me"
-            hint="Mikayla will nudge you"
-            icon={<BellIcon color={accent} />}
-            onClick={() => onAction('remind')}
           />
         </div>
 
@@ -233,6 +236,70 @@ function ActionRow({
   );
 }
 
+function HeaderAvatar({ member }: { member: FamilyMember }) {
+  const [photoOk, setPhotoOk] = useState(true);
+  return (
+    <span
+      className="shrink-0 flex items-center justify-center"
+      style={{
+        width: 44,
+        height: 44,
+        borderRadius: '50%',
+        background: familyBg(member),
+        border: `0.5px solid ${tokens.gold}`,
+        overflow: 'hidden',
+        boxShadow: `0 0 12px rgba(196,160,80,0.22)`,
+      }}
+    >
+      {photoOk ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={`/avatars/${member}.jpg`}
+          alt=""
+          onError={() => setPhotoOk(false)}
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            pointerEvents: 'none',
+          }}
+          draggable={false}
+        />
+      ) : (
+        <span
+          style={{
+            fontSize: 16,
+            fontWeight: 700,
+            color: familyText(member),
+          }}
+        >
+          {LETTERS[member]}
+        </span>
+      )}
+    </span>
+  );
+}
+
+function RequestIcon({ color }: { color: string }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <path
+        d="M5 7l7-4 7 4v10l-7 4-7-4V7z"
+        stroke={color}
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M9 12.2l2.2 2L15 10.5"
+        stroke={color}
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 function MessageIcon({ color }: { color: string }) {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
@@ -275,25 +342,6 @@ function FilterIcon({ color }: { color: string }) {
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
       <path
         d="M4 5h16M7 12h10M10 19h4"
-        stroke={color}
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-function BellIcon({ color }: { color: string }) {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-      <path
-        d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15L6 16z"
-        stroke={color}
-        strokeWidth="1.8"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M10 20a2 2 0 0 0 4 0"
         stroke={color}
         strokeWidth="1.8"
         strokeLinecap="round"
