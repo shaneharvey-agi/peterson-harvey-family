@@ -136,7 +136,15 @@ export function FamilyAvatars({ members = DEFAULT_MEMBERS }: { members?: AvatarM
         setTranscript(text);
       },
       onFinal: (text) => {
-        transcriptRef.current = text;
+        // iOS Safari finalises late: when the user releases mid-utterance,
+        // session.stop() fires onFinal with only the isFinal-marked chunks,
+        // which is often shorter than the live interim+final string we were
+        // showing. Never let the final callback shrink what onInterim already
+        // captured — otherwise `captured` ends up empty and the message
+        // silently fails to send.
+        if (text.trim().length > transcriptRef.current.trim().length) {
+          transcriptRef.current = text;
+        }
       },
       onError: () => {
         // mic permission denied / API hiccup — collapse silently to standard
@@ -171,7 +179,7 @@ export function FamilyAvatars({ members = DEFAULT_MEMBERS }: { members?: AvatarM
   // mean Molly), so we skip the intent classifier and send the transcript
   // straight into the chat thread. For Request / Chore / Filter, Shane
   // taps the in-sheet buttons during the hold instead of speaking.
-  const endActiveBloom = async (member: FamilyMember) => {
+  const endActiveBloom = (member: FamilyMember) => {
     stopRecording('capture');
     const captured = transcriptRef.current.trim();
     setTranscript('');
@@ -184,16 +192,17 @@ export function FamilyAvatars({ members = DEFAULT_MEMBERS }: { members?: AvatarM
 
     setSheetMember(null);
 
-    // Visual + haptic confirmation FIRST — the user committed by releasing,
-    // so confirm the gesture instantly. The Supabase write + SMS fan-out
-    // run behind the halo flash so latency doesn't gate the feel.
+    // Confirm-and-fly: halo + medium impact + immediate router push happen on
+    // the same animation frame so the release feels like the message
+    // physically leaves the device. Supabase + Twilio run in the background;
+    // the destination thread page does its own fetch and will see the new
+    // row by the time it mounts.
     setFlashKey((k) => k + 1);
     impact('medium');
+    router.push(`/messages/${member}`);
 
     // Twilio SMS — fire-and-forget. /api/sms safely no-ops when Twilio
-    // creds or the recipient's phone aren't configured (returns
-    // {sent:false, reason}), so we don't surface failures: the in-app
-    // chat_messages row is still the source of truth.
+    // creds or the recipient's phone aren't configured.
     fetch('/api/sms', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -202,19 +211,21 @@ export function FamilyAvatars({ members = DEFAULT_MEMBERS }: { members?: AvatarM
       /* network blip; in-app message still lands via Supabase */
     });
 
-    const res = await sendMessage({
+    sendMessage({
       threadKey: member,
       sender: CURRENT_USER,
       body: captured,
+    }).then((res) => {
+      if (res.ok) {
+        showToast(`Sent to ${capitalize(member)}.`);
+      } else {
+        // Supabase write failed — surface a tap-to-retry toast so the
+        // captured words aren't lost on the floor. User is already on the
+        // destination thread by now, so the Request-sheet fallback would
+        // be jarring; toast on the new screen is the right surface.
+        showToast(`Couldn't send: ${res.error}`);
+      }
     });
-    if (res.ok) {
-      showToast(`Sent to ${capitalize(member)}.`);
-      router.push(`/messages/${member}`);
-    } else {
-      // Supabase write failed — fall back to a Request draft so the
-      // words aren't lost on the floor.
-      openRequestPrefilled(member, captured);
-    }
   };
 
   // Make sure mic + haptic loop don't outlive the component (e.g. nav-away
@@ -359,9 +370,27 @@ function AvatarButton({
   onLongPressEnd: (cancelled: boolean) => void;
 }) {
   const [photoOk, setPhotoOk] = useState(true);
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
   const timerRef = useRef<number | null>(null);
   const isHolding = useRef(false);
   const startPos = useRef<{ x: number; y: number } | null>(null);
+
+  // React 17+ delegates touch events at the document root with passive=true,
+  // so calling preventDefault inside an onTouchStart React handler is a no-op
+  // and iOS Safari still fires the long-press image/share callout. Attach the
+  // native listener directly with passive:false so preventDefault actually
+  // claims the gesture before iOS can react.
+  useEffect(() => {
+    const node = buttonRef.current;
+    if (!node) return;
+    const onTouchStartNative = (e: TouchEvent) => {
+      e.preventDefault();
+    };
+    node.addEventListener('touchstart', onTouchStartNative, { passive: false });
+    return () => {
+      node.removeEventListener('touchstart', onTouchStartNative);
+    };
+  }, []);
 
   const clearTimer = () => {
     if (timerRef.current !== null) {
@@ -426,18 +455,14 @@ function AvatarButton({
 
   return (
     <button
+      ref={buttonRef}
       type="button"
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerCancel}
       onContextMenu={(e) => e.preventDefault()}
-      // iOS Safari fires the native "Save Image / Copy" callout from a
-      // touchstart-derived gesture even when -webkit-touch-callout is set
-      // on the parent. preventDefault on touchstart kills it without
-      // breaking pointer events (pointerdown/up still dispatch independently
-      // on iOS, so onTap and the long-press timer keep working).
-      onTouchStart={(e) => e.preventDefault()}
+      onDragStart={(e) => e.preventDefault()}
       aria-label={`Open messages with ${member}. Long-press for actions.`}
       className="relative flex items-center justify-center"
       style={{
@@ -452,7 +477,9 @@ function AvatarButton({
         WebkitTouchCallout: 'none',
         WebkitUserSelect: 'none',
         userSelect: 'none',
-      }}
+        WebkitTapHighlightColor: 'transparent',
+        touchAction: 'manipulation',
+      } as React.CSSProperties}
     >
       {pendingRequests > 0 && (
         <span
@@ -508,7 +535,11 @@ function AvatarButton({
               fontWeight: 700,
               color: familyText(member),
               lineHeight: 1,
-            }}
+              pointerEvents: 'none',
+              WebkitTouchCallout: 'none',
+              WebkitUserSelect: 'none',
+              userSelect: 'none',
+            } as React.CSSProperties}
           >
             {letter}
           </span>
