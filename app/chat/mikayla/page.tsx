@@ -163,7 +163,13 @@ function MikaylaChatPageInner() {
           button, same padding) with the Liquid Glass treatment layered on:
           35px backdrop blur on the pill itself, 0.5px gold border. The outer
           fixed container is fully transparent so there's no second border or
-          competing background where the bubble meets the BottomNav. */}
+          competing background where the bubble meets the BottomNav.
+
+          Bottom-padding is set asymmetrically (25px) so the pill sits the
+          same distance above the BottomNav as it does on /messages/[who],
+          where the "Press & hold M" tip line provides that lift naturally.
+          The M orb pokes ~20px above the nav, so the pill needs the extra
+          clearance — without it the orb covers the bottom of the pill. */}
       <form
         onSubmit={onSubmit}
         className="fixed left-1/2"
@@ -172,7 +178,7 @@ function MikaylaChatPageInner() {
           bottom: `calc(${NAV_HEIGHT}px + env(safe-area-inset-bottom))`,
           width: '100%',
           maxWidth: 393,
-          padding: '8px 12px',
+          padding: '8px 12px 25px',
           background: 'transparent',
           zIndex: 9,
         }}
