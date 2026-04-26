@@ -40,22 +40,24 @@ export function CalendarHeader() {
   }, []);
 
   return (
-    <div className="flex justify-between items-center py-[10px] pb-3">
+    <div
+      className="flex justify-between items-center py-[10px] pb-3"
+      style={{ position: 'relative' }}
+    >
       {/* Left zone: date */}
       <div className="flex-1 min-w-0">
         <span className="text-[14px] font-extrabold text-[#FFFFFF] tracking-[0.8px] whitespace-nowrap">
           {dateStr}
         </span>
       </div>
-      {/* Middle zone: weather icon (centered) — tap to toggle 14-day overlay.
-          Position relative so the overlay can absolutely-position beneath it. */}
-      <div className="flex-1 flex justify-center" style={{ position: 'relative' }}>
+      {/* Middle zone: weather icon (centered) — tap to toggle the bento forecast. */}
+      <div className="flex-1 flex justify-center">
         <button
           type="button"
           onClick={() => setForecastOpen((v) => !v)}
           aria-expanded={forecastOpen}
           aria-haspopup="dialog"
-          aria-label={forecastOpen ? 'Close 14-day forecast' : 'Open 14-day forecast'}
+          aria-label={forecastOpen ? 'Close weather forecast' : 'Open weather forecast'}
           style={{
             background: 'transparent',
             border: 'none',
@@ -66,12 +68,19 @@ export function CalendarHeader() {
         >
           <WeatherBadge temp={temp} condition={condition} />
         </button>
-        <WeatherOverlay open={forecastOpen} onClose={() => setForecastOpen(false)} />
       </div>
       {/* Right zone: toggle */}
       <div className="flex-1 flex justify-end">
         <DayWeekMonthToggle />
       </div>
+      {/* Forecast bento — anchored to the right edge of the header row so it
+          drops in under the sun and skews toward the top-right of the screen. */}
+      <WeatherOverlay
+        open={forecastOpen}
+        onClose={() => setForecastOpen(false)}
+        currentTemp={temp}
+        currentCondition={condition}
+      />
     </div>
   );
 }
