@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { tokens } from '@/lib/design-tokens';
 import { fetchUnreadCount } from '@/lib/queries/notifications';
 import { fetchTotalUnreadMessages } from '@/lib/queries/chatMessages';
+import { impact } from '@/lib/haptics';
 import { MMark } from '@/components/icons/MMark';
 import { QuickAddMenu } from './QuickAddMenu';
 
@@ -152,10 +153,14 @@ export function TopStrip({ unreadMessages }: { unreadMessages?: number }) {
             )}
           </Link>
 
-          {/* Notifications bell — Mikayla's proactive feed */}
+          {/* Notifications bell — Mikayla's proactive feed. Stroke turns
+              gold when unread > 0 so the icon itself reads as "lit," and
+              tap fires a light haptic to mark the transition into the
+              feed. */}
           <Link
             href="/notifications"
             prefetch={false}
+            onClick={() => impact('light')}
             aria-label={
               unreadNotifs > 0
                 ? `Notifications, ${unreadNotifs} unread`
@@ -173,14 +178,14 @@ export function TopStrip({ unreadMessages }: { unreadMessages?: number }) {
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
               <path
                 d="M6 9a6 6 0 0 1 12 0c0 4 1.5 5.5 2 6.5H4c.5-1 2-2.5 2-6.5z"
-                stroke="#FFFFFF"
+                stroke={unreadNotifs > 0 ? tokens.gold : '#FFFFFF'}
                 strokeWidth="1.6"
                 strokeLinejoin="round"
                 fill="none"
               />
               <path
                 d="M10 18a2 2 0 0 0 4 0"
-                stroke="#FFFFFF"
+                stroke={unreadNotifs > 0 ? tokens.gold : '#FFFFFF'}
                 strokeWidth="1.6"
                 strokeLinecap="round"
                 fill="none"

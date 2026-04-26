@@ -83,7 +83,7 @@ export default function NotificationsPage() {
       }}
     >
       <header
-        className="flex items-center justify-between px-4"
+        className="flex items-center gap-3 px-4"
         style={{
           paddingTop: `calc(12px + env(safe-area-inset-top))`,
           paddingBottom: 12,
@@ -92,33 +92,54 @@ export default function NotificationsPage() {
           zIndex: 10,
           background: 'rgba(7,9,15,0.92)',
           backdropFilter: 'blur(10px)',
+          WebkitBackdropFilter: 'blur(10px)',
         }}
       >
-        <Link href="/" className="text-[13px] text-white/60 no-underline">
-          ← Back
+        <Link
+          href="/"
+          className="text-[14px] no-underline shrink-0"
+          aria-label="Back home"
+          style={{ color: 'rgba(255,255,255,0.55)' }}
+        >
+          ←
         </Link>
-        <span className="text-[11px] uppercase tracking-[1px] text-white/40">
-          {unreadCount > 0 ? `${unreadCount} unread` : 'All caught up'}
-        </span>
+        <div className="flex-1 min-w-0">
+          <div
+            style={{
+              fontSize: 15,
+              fontWeight: 700,
+              color: '#FFFFFF',
+              letterSpacing: '-0.1px',
+            }}
+          >
+            Alerts
+          </div>
+          <div className="text-[11px]" style={{ color: 'rgba(255,255,255,0.4)' }}>
+            {unreadCount > 0
+              ? `${unreadCount} new ${unreadCount === 1 ? 'item' : 'items'}`
+              : 'All caught up'}
+          </div>
+        </div>
         <button
           type="button"
           onClick={handleMarkAllRead}
           disabled={busy || unreadCount === 0}
-          className="text-[11px] font-semibold"
+          className="text-[11px] font-semibold shrink-0"
           style={{
             color: unreadCount > 0 ? tokens.gold : 'rgba(255,255,255,0.25)',
-            padding: 0,
+            padding: '6px 10px',
             background: 'transparent',
             border: 'none',
+            letterSpacing: '0.2px',
           }}
         >
           Mark all
         </button>
       </header>
 
-      <div className="px-4 pb-24 pt-2 flex flex-col gap-2">
+      <div className="px-4 pb-24 pt-3 flex flex-col gap-2.5">
         {items === null ? (
-          <div className="pt-10 text-center text-white/40">Loading…</div>
+          <div className="pt-10 text-center text-white/40 text-[13px]">Loading…</div>
         ) : items.length === 0 ? (
           <EmptyState />
         ) : (
@@ -150,17 +171,39 @@ function NotificationCard({
   const unread = notif.readAt === null;
   const accent = severityColor(notif.severity);
 
+  // Executive Shell tile: deep navy frosted glass, gold hairline, 18px
+  // radius, soft gold glow on unread (matches user-bubble physics).
+  // Severity reads as a 3px colored stripe down the leading edge — keeps
+  // the surface on-spec while still flagging urgency at a glance.
   return (
     <div
-      className="relative rounded-md"
+      className="relative"
       style={{
-        background: unread
-          ? `${accent}14`
-          : 'rgba(255,255,255,0.03)',
-        border: `1px solid ${unread ? `${accent}55` : 'rgba(255,255,255,0.06)'}`,
-        padding: '12px 14px',
+        background: unread ? 'rgba(15, 31, 56, 0.55)' : 'rgba(255, 255, 255, 0.04)',
+        border: `0.5px solid ${tokens.gold}`,
+        backdropFilter: 'blur(35px) saturate(1.1)',
+        WebkitBackdropFilter: 'blur(35px) saturate(1.1)',
+        borderRadius: 18,
+        padding: '12px 14px 12px 18px',
+        boxShadow: unread ? '0 0 12px 2px rgba(196, 160, 80, 0.10)' : 'none',
+        opacity: unread ? 1 : 0.72,
+        overflow: 'hidden',
       }}
     >
+      {/* Severity stripe on the leading edge */}
+      <span
+        aria-hidden
+        style={{
+          position: 'absolute',
+          top: 8,
+          bottom: 8,
+          left: 0,
+          width: 3,
+          borderRadius: '0 2px 2px 0',
+          background: accent,
+          opacity: unread ? 1 : 0.5,
+        }}
+      />
       <button
         type="button"
         onClick={onOpen}
@@ -174,33 +217,54 @@ function NotificationCard({
       >
         <div className="flex items-start gap-2.5">
           <SeverityIcon severity={notif.severity} />
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0" style={{ paddingRight: 18 }}>
             <div className="flex items-baseline justify-between gap-2">
               <div
                 className="text-[13px] font-semibold truncate"
-                style={{ color: unread ? '#FFFFFF' : 'rgba(255,255,255,0.7)' }}
+                style={{
+                  color: unread ? '#FFFFFF' : 'rgba(255,255,255,0.65)',
+                  letterSpacing: '-0.1px',
+                }}
               >
                 {notif.title}
               </div>
-              <span className="text-[10px] text-white/40 shrink-0">
+              <span
+                className="shrink-0"
+                style={{
+                  fontSize: 10,
+                  color: 'rgba(255,255,255,0.4)',
+                  fontVariantNumeric: 'tabular-nums',
+                }}
+              >
                 {formatAge(notif.createdAt)}
               </span>
             </div>
             {notif.body && (
               <div
-                className="text-[11px] leading-snug mt-1"
-                style={{ color: 'rgba(255,255,255,0.6)' }}
+                className="text-[12px] leading-snug mt-1"
+                style={{ color: 'rgba(255,255,255,0.7)' }}
               >
                 {notif.body}
               </div>
             )}
             {notif.actionLabel && (
-              <div
-                className="text-[11px] font-semibold mt-2"
-                style={{ color: accent }}
+              <span
+                className="inline-flex items-center mt-2.5"
+                style={{
+                  gap: 6,
+                  padding: '4px 10px',
+                  borderRadius: 999,
+                  background: 'rgba(7, 9, 15, 0.55)',
+                  border: `0.5px solid ${tokens.gold}`,
+                  color: tokens.gold,
+                  fontSize: 11,
+                  fontWeight: 700,
+                  letterSpacing: '0.2px',
+                }}
               >
-                {notif.actionLabel} →
-              </div>
+                {notif.actionLabel}
+                <span aria-hidden style={{ fontSize: 10 }}>→</span>
+              </span>
             )}
           </div>
         </div>
@@ -212,16 +276,16 @@ function NotificationCard({
           onDismiss();
         }}
         aria-label="Dismiss"
-        className="absolute"
+        className="absolute flex items-center justify-center"
         style={{
-          top: 8,
-          right: 8,
+          top: 6,
+          right: 6,
           width: 22,
           height: 22,
           borderRadius: 999,
           background: 'transparent',
           border: 'none',
-          color: 'rgba(255,255,255,0.3)',
+          color: 'rgba(255,255,255,0.35)',
           fontSize: 14,
           lineHeight: 1,
         }}
@@ -234,13 +298,44 @@ function NotificationCard({
 
 function EmptyState() {
   return (
-    <div className="pt-16 text-center">
-      <div className="text-[28px]" aria-hidden>✨</div>
-      <div className="text-[13px] text-white/55 mt-2">
-        Nothing for you right now.
+    <div className="pt-20 text-center px-6">
+      <div
+        className="mx-auto"
+        style={{
+          width: 44,
+          height: 44,
+          borderRadius: '50%',
+          border: `0.5px solid ${tokens.gold}`,
+          background: 'rgba(15, 31, 56, 0.55)',
+          backdropFilter: 'blur(35px) saturate(1.1)',
+          WebkitBackdropFilter: 'blur(35px) saturate(1.1)',
+          boxShadow: '0 0 12px 2px rgba(196, 160, 80, 0.10)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
+          <path
+            d="M5 12.5l4 4L19 7"
+            stroke={tokens.gold}
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
       </div>
-      <div className="text-[11px] text-white/35 mt-1">
-        Mikayla will drop things here as she finds them.
+      <div
+        className="mt-4"
+        style={{ fontSize: 14, fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.1px' }}
+      >
+        All caught up
+      </div>
+      <div
+        className="mt-1.5"
+        style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', lineHeight: 1.45 }}
+      >
+        Mikayla will surface things here as they come up.
       </div>
     </div>
   );
@@ -258,11 +353,12 @@ function SeverityIcon({ severity }: { severity: NotificationSeverity }) {
         width: 22,
         height: 22,
         borderRadius: '50%',
-        background: `${color}2A`,
-        border: `1px solid ${color}66`,
+        background: `${color}26`,
+        border: `0.5px solid ${color}88`,
         color,
         fontSize: 12,
         fontWeight: 800,
+        lineHeight: 1,
       }}
     >
       {severity === 'urgent' ? '!' : severity === 'warning' ? '·' : 'i'}
