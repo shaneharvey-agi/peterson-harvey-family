@@ -148,7 +148,15 @@ export default function EventEditPage() {
 
   return (
     <Shell>
-      <div className="px-4 pt-4 pb-8 flex flex-col gap-4">
+      <div
+        className="px-4 pb-8 flex flex-col gap-4"
+        style={{
+          // Push the header below the iOS dynamic island / system clock.
+          // The Shell only sets bottom padding for the persistent BottomNav;
+          // the top edge needs its own safe-area reservation.
+          paddingTop: 'calc(16px + env(safe-area-inset-top))',
+        }}
+      >
         <header className="flex items-center justify-between">
           <Link
             href="/"
