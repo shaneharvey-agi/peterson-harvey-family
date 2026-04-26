@@ -1,14 +1,23 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { tokens } from '@/lib/design-tokens';
 import { MOrb } from '@/components/icons/MOrb';
 import { MealsIcon } from '@/components/icons/MealsIcon';
 
 type Tab = 'home' | 'todo' | 'kitchen' | 'meals';
 
-export function BottomNav({ active = 'home' }: { active?: Tab }) {
+function tabFromPath(pathname: string | null): Tab {
+  if (!pathname) return 'home';
+  if (pathname.startsWith('/chores')) return 'todo';
+  // /kitchen and /meals don't exist yet — every other route reads as "home".
+  return 'home';
+}
+
+export function BottomNav({ active }: { active?: Tab } = {}) {
   const router = useRouter();
+  const pathname = usePathname();
+  const resolved = active ?? tabFromPath(pathname);
   return (
     <nav
       className="fixed bottom-0 left-0 right-0 z-10"
@@ -22,15 +31,15 @@ export function BottomNav({ active = 'home' }: { active?: Tab }) {
       }}
     >
       <div className="flex items-end justify-between">
-        <NavItem label="Home" active={active === 'home'} icon={<HomeIcon active={active === 'home'} />} onClick={() => router.push('/')} />
-        <NavItem label="To Do" active={active === 'todo'} icon={<TodoIcon active={active === 'todo'} />} />
+        <NavItem label="Home" active={resolved === 'home'} icon={<HomeIcon active={resolved === 'home'} />} onClick={() => router.push('/')} />
+        <NavItem label="To Do" active={resolved === 'todo'} icon={<TodoIcon active={resolved === 'todo'} />} onClick={() => router.push('/chores')} />
         <div className="flex flex-col items-center" style={{ width: 56 }}>
           <MOrb />
         </div>
-        <NavItem label="Kitchen" active={active === 'kitchen'} icon={<KitchenIcon active={active === 'kitchen'} />} />
+        <NavItem label="Kitchen" active={resolved === 'kitchen'} icon={<KitchenIcon active={resolved === 'kitchen'} />} />
         <NavItem
           label="Meals"
-          active={active === 'meals'}
+          active={resolved === 'meals'}
           icon={<MealsIcon size={34} />}
           iconBoxSize={36}
         />

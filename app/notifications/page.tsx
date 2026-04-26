@@ -78,6 +78,8 @@ export default function NotificationsPage() {
         minHeight: '100dvh',
         background: tokens.bg,
         color: '#FFFFFF',
+        // Reserve space for the persistent BottomNav (mounted in app/layout.tsx).
+        paddingBottom: 'calc(96px + env(safe-area-inset-bottom))',
       }}
     >
       <header

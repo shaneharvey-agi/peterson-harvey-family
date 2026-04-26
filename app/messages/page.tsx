@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { BottomNav } from '@/components/layout/BottomNav';
 import {
   fetchThreads,
   type ThreadSummary,
@@ -76,8 +75,6 @@ export default function MessagesInboxPage() {
           ))
         )}
       </div>
-
-      <BottomNav active="home" />
     </main>
   );
 }

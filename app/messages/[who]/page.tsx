@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { notFound, useParams } from 'next/navigation';
-import { BottomNav } from '@/components/layout/BottomNav';
 import {
   chatMessageFromRow,
   fetchThreadMessages,
@@ -240,7 +239,6 @@ function ThreadView({ threadKey }: { threadKey: ThreadKey }) {
         threadKey={threadKey}
       />
 
-      <BottomNav active="home" />
     </main>
   );
 }

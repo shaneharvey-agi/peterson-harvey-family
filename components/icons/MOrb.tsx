@@ -126,17 +126,11 @@ export function MOrb() {
       const { kind, content, recipient } = resolved;
       const body = (content || captured).trim();
 
-      // Message intent with a named recipient → write to chat_messages,
-      // fire SMS in the background, navigate to the thread immediately.
+      // Message intent with a named recipient → write to chat_messages and
+      // navigate to the thread immediately. Twilio fan-out is deferred per
+      // Lean MVP; cross-device delivery rides on Supabase Realtime instead.
       if (kind === 'message' && recipient && recipient !== CURRENT_USER) {
         router.push(`/messages/${recipient}`);
-        fetch('/api/sms', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ member: recipient, body }),
-        }).catch(() => {
-          /* in-app message still lands via Supabase */
-        });
         sendMessage({
           threadKey: recipient,
           sender: CURRENT_USER,

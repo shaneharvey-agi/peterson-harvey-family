@@ -3,7 +3,6 @@
 import { Suspense, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { BottomNav } from '@/components/layout/BottomNav';
 import { tokens } from '@/lib/design-tokens';
 import { impact } from '@/lib/haptics';
 
@@ -241,8 +240,6 @@ function MikaylaChatPageInner() {
           </button>
         </div>
       </form>
-
-      <BottomNav active="home" />
     </main>
   );
 }

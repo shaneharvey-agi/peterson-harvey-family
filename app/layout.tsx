@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import { BottomNav } from '@/components/layout/BottomNav';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -26,6 +27,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body style={{ background: '#07090F', color: '#EDEEF2' }}>
         {children}
+        {/* Persistent shell: BottomNav (with the M Orb in the middle) sits on
+            every route automatically. Each page's main content needs to leave
+            room at the bottom — see paddingBottom on the page-level <main>s. */}
+        <BottomNav />
       </body>
     </html>
   );

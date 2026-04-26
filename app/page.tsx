@@ -1,7 +1,6 @@
 import { Suspense } from 'react';
 import { TopStrip } from '@/components/layout/TopStrip';
 import { FamilyAvatars } from '@/components/layout/FamilyAvatars';
-import { BottomNav } from '@/components/layout/BottomNav';
 import { CalendarHeader } from '@/components/calendar/CalendarHeader';
 import { EventTimeline } from '@/components/calendar/EventTimeline';
 import { MessageCarousel } from '@/components/messages/MessageCarousel';
@@ -58,7 +57,6 @@ export default function HomePage() {
         <MessageCarousel />
       </div>
 
-      <BottomNav active="home" />
     </main>
   );
 }

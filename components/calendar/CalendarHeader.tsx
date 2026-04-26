@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { WeatherBadge } from './WeatherBadge';
+import { WeatherOverlay } from './WeatherOverlay';
 import { DayWeekMonthToggle } from './DayWeekMonthToggle';
 import { getWeather, type WeatherCondition } from '@/lib/weather';
 
@@ -18,6 +19,7 @@ export function CalendarHeader() {
   const [temp, setTemp] = useState<number | null>(null);
   const [condition, setCondition] = useState<WeatherCondition | null>(null);
   const [dateStr, setDateStr] = useState<string>(() => formatToday());
+  const [forecastOpen, setForecastOpen] = useState(false);
 
   useEffect(() => {
     // Refresh date label at mount in case SSR stamped a different day.
@@ -45,9 +47,26 @@ export function CalendarHeader() {
           {dateStr}
         </span>
       </div>
-      {/* Middle zone: weather icon (centered) */}
-      <div className="flex-1 flex justify-center">
-        <WeatherBadge temp={temp} condition={condition} />
+      {/* Middle zone: weather icon (centered) — tap to toggle 14-day overlay.
+          Position relative so the overlay can absolutely-position beneath it. */}
+      <div className="flex-1 flex justify-center" style={{ position: 'relative' }}>
+        <button
+          type="button"
+          onClick={() => setForecastOpen((v) => !v)}
+          aria-expanded={forecastOpen}
+          aria-haspopup="dialog"
+          aria-label={forecastOpen ? 'Close 14-day forecast' : 'Open 14-day forecast'}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            padding: 0,
+            cursor: 'pointer',
+            WebkitTapHighlightColor: 'transparent',
+          } as React.CSSProperties}
+        >
+          <WeatherBadge temp={temp} condition={condition} />
+        </button>
+        <WeatherOverlay open={forecastOpen} onClose={() => setForecastOpen(false)} />
       </div>
       {/* Right zone: toggle */}
       <div className="flex-1 flex justify-end">
