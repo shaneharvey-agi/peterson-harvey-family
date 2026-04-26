@@ -4,7 +4,7 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'Mikayla',
   description: 'Your family, handled.',
-  manifest: '/manifest.json',
+  // Manifest comes from app/manifest.ts; icons from app/icon.tsx + app/apple-icon.tsx.
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',

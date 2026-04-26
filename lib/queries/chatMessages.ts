@@ -66,7 +66,7 @@ function normalizeSender(raw: string): MessageSender {
   return 'jax';
 }
 
-function mapRow(row: ChatMessageRow): ChatMessage {
+export function chatMessageFromRow(row: ChatMessageRow): ChatMessage {
   const key = parseThreadKey(row.thread_key) ?? 'family';
   return {
     id: String(row.id),
@@ -88,7 +88,7 @@ export async function fetchAllChatMessages(): Promise<ChatMessage[]> {
       .limit(500);
     if (error) throw error;
     if (!data || data.length === 0) return [...mockChatMessages];
-    return (data as ChatMessageRow[]).map(mapRow);
+    return (data as ChatMessageRow[]).map(chatMessageFromRow);
   } catch (err) {
     console.warn('[queries/chatMessages] falling back to mock:', err);
     return [...mockChatMessages];

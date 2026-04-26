@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { notFound, useParams } from 'next/navigation';
 import { BottomNav } from '@/components/layout/BottomNav';
 import {
+  chatMessageFromRow,
   fetchThreadMessages,
   parseThreadKey,
   threadTitle,
@@ -12,6 +13,7 @@ import {
   type ThreadKey,
 } from '@/lib/queries/chatMessages';
 import { sendMessage, markThreadRead } from '@/lib/mutations/chatMessages';
+import { supabase, type ChatMessageRow } from '@/lib/supabase';
 import {
   tokens,
   familyColor,
@@ -47,6 +49,64 @@ function ThreadView({ threadKey }: { threadKey: ThreadKey }) {
     })();
     return () => {
       alive = false;
+    };
+  }, [threadKey]);
+
+  // Supabase Realtime: subscribe to INSERTs on this thread so messages
+  // written from another device (or by Mikayla / the M Orb voice flow)
+  // appear instantly without polling. The supabase_realtime publication
+  // includes chat_messages as of migration 2026-04-25.
+  useEffect(() => {
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    try {
+      channel = supabase
+        .channel(`chat:${threadKey}`)
+        .on(
+          'postgres_changes' as never,
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'chat_messages',
+            filter: `thread_key=eq.${threadKey}`,
+          },
+          (payload: { new: ChatMessageRow }) => {
+            const incoming = chatMessageFromRow(payload.new);
+            setMessages((prev) => {
+              if (!prev) return [incoming];
+              // Already present (initial fetch or our own write echoed back)
+              if (prev.some((m) => m.id === incoming.id)) return prev;
+              // Replace any in-flight optimistic bubble that matches this
+              // sender + body so the composer's optimistic append doesn't
+              // double up when the realtime echo lands.
+              const optimisticIdx = prev.findIndex(
+                (m) =>
+                  m.id.startsWith('local-') &&
+                  m.sender === incoming.sender &&
+                  m.body === incoming.body,
+              );
+              if (optimisticIdx >= 0) {
+                const next = [...prev];
+                next[optimisticIdx] = incoming;
+                return next;
+              }
+              return [...prev, incoming];
+            });
+          },
+        )
+        .subscribe();
+    } catch (err) {
+      // Supabase env missing or realtime offline — fall back to no-live
+      // mode silently. Initial fetch above still works via the mock path.
+      console.warn('[realtime] subscription unavailable:', err);
+    }
+    return () => {
+      if (channel) {
+        try {
+          supabase.removeChannel(channel);
+        } catch {
+          /* noop */
+        }
+      }
     };
   }, [threadKey]);
 
