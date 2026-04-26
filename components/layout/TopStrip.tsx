@@ -45,9 +45,9 @@ export function TopStrip({ unreadMessages }: { unreadMessages?: number }) {
             bold M, waveform strip) acts as the leading "M" of "Mikayla", so
             the wordmark reads "ikayla" beside it. */}
         <div
-          className="flex items-center"
+          className="flex"
           aria-label="Mikayla"
-          style={{ gap: 4 }}
+          style={{ gap: 4, alignItems: 'flex-start' }}
         >
           <MMark size={32} />
           <span
@@ -57,6 +57,11 @@ export function TopStrip({ unreadMessages }: { unreadMessages?: number }) {
               fontWeight: 800,
               letterSpacing: '0.3px',
               lineHeight: 1,
+              // Cap-top of the wordmark sits ~1px below its line-box top,
+              // while the M's cap-top sits ~5px below the icon's top edge.
+              // Push the wordmark down so the two cap-tops land on the
+              // same horizontal line.
+              marginTop: 4,
             }}
           >
             ikayla
