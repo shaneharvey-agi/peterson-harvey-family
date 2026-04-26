@@ -13,8 +13,10 @@ interface Props {
   tightTop?: boolean;
   /** Avatar slot (28px) shown to the left of recipient bubbles. Pass null to leave the gutter empty for stacked recipient messages. */
   avatar?: ReactNode;
-  /** Soft-gold sender name above the bubble. Used in the family thread for non-self senders. */
+  /** Sender name above the bubble. Used in the family thread for non-self senders. */
   senderLabel?: string;
+  /** Optional override for the senderLabel color. Defaults to soft gold (Mikayla / system). */
+  senderLabelColor?: string;
   /** Accessibility label, falls back to the body string. */
   ariaLabel?: string;
 }
@@ -42,6 +44,7 @@ export function MessageBubble({
   tightTop = false,
   avatar,
   senderLabel,
+  senderLabelColor,
   ariaLabel,
 }: Props) {
   const topLeftR = mine ? RADIUS : tightTop ? SHARP : RADIUS;
@@ -73,7 +76,7 @@ export function MessageBubble({
               fontSize: 10,
               fontWeight: 700,
               letterSpacing: '0.4px',
-              color: tokens.gold,
+              color: senderLabelColor ?? tokens.gold,
               paddingLeft: 4,
             }}
           >

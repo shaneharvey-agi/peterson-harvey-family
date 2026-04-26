@@ -16,6 +16,7 @@ import { supabase, type ChatMessageRow } from '@/lib/supabase';
 import {
   tokens,
   familyColor,
+  familyText,
   type FamilyMember,
 } from '@/lib/design-tokens';
 import { MMark } from '@/components/icons/MMark';
@@ -332,17 +333,23 @@ function Bubble({
   threadKey: ThreadKey;
 }) {
   const mine = message.sender === 'shane';
+  const isMikayla = message.sender === 'mikayla';
   const time = new Date(message.createdAt).toLocaleTimeString(undefined, {
     hour: 'numeric',
     minute: '2-digit',
   });
 
   // In the family thread, show the sender's name above their first
-  // bubble in a streak — soft gold per the unified spec.
-  const senderLabel =
-    !mine && showAvatar && threadKey === 'family'
-      ? capitalize(message.sender)
-      : undefined;
+  // bubble in a streak. Humans get their accent text color so the
+  // thread reads at a glance; Mikayla stays soft gold to mark her
+  // assistant role.
+  const showLabel = !mine && showAvatar && threadKey === 'family';
+  const senderLabel = showLabel ? capitalize(message.sender) : undefined;
+  const senderLabelColor = showLabel
+    ? isMikayla
+      ? tokens.gold
+      : familyText(message.sender as FamilyMember)
+    : undefined;
 
   return (
     <MessageBubble
@@ -351,6 +358,7 @@ function Bubble({
       body={message.body}
       timestamp={time}
       senderLabel={senderLabel}
+      senderLabelColor={senderLabelColor}
       avatar={!mine && showAvatar ? <BubbleAvatar sender={message.sender} /> : null}
     />
   );
