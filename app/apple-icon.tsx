@@ -1,14 +1,14 @@
 // iOS Add-to-Home-Screen icon (180x180 PNG). Mirrors the M Orb in the
-// bottom nav so the home-screen icon matches what the user sees when
-// they open the app. iOS auto-applies its own rounded mask.
+// bottom nav — same renderer + same Inter 900 font subset as app/icon.tsx.
 
 import { ImageResponse } from 'next/og';
-import { renderOrbIcon } from '@/lib/orb-icon';
+import { loadOrbIconFonts, renderOrbIcon } from '@/lib/orb-icon';
 
 export const runtime = 'edge';
 export const size = { width: 180, height: 180 };
 export const contentType = 'image/png';
 
-export default function AppleIcon() {
-  return new ImageResponse(renderOrbIcon(size.width), { ...size });
+export default async function AppleIcon() {
+  const fonts = await loadOrbIconFonts();
+  return new ImageResponse(renderOrbIcon(size.width), { ...size, fonts });
 }
