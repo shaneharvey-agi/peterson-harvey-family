@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { BottomNav } from '@/components/layout/BottomNav';
+import { ColdBootGate } from '@/components/loading/ColdBootGate';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -31,6 +32,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             every route automatically. Each page's main content needs to leave
             room at the bottom — see paddingBottom on the page-level <main>s. */}
         <BottomNav />
+        {/* Cold Boot — Living Signature splash, once per PWA launch. */}
+        <ColdBootGate />
       </body>
     </html>
   );
