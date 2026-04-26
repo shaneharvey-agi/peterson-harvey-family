@@ -1,6 +1,12 @@
 // PWA + favicon icons. Generated at build time via next/og's ImageResponse
-// — no extra deps, no static asset to keep in sync. Mirrors the gold-M brand
-// mark in the upper-left of TopStrip (28x28 gold square + bold black "M").
+// — no extra deps, no static asset to keep in sync. Mirrors the M Orb in
+// the bottom nav (gold rounded body, bold black "M", dark bottom strip
+// with the static waveform bars).
+//
+// iOS auto-applies its own rounded mask, so we don't bake in borderRadius
+// here — the design is full-bleed gold + bottom dark strip, and iOS rounds
+// the corners cleanly. Android uses the icon as-is or applies adaptive
+// masking depending on the device.
 //
 // Two sizes are emitted for the manifest:
 //   /icon/192 → Android Chrome standard
@@ -8,6 +14,7 @@
 // iOS uses app/apple-icon.tsx (180) instead.
 
 import { ImageResponse } from 'next/og';
+import { renderOrbIcon } from '@/lib/orb-icon';
 
 export const runtime = 'edge';
 
@@ -20,27 +27,5 @@ export function generateImageMetadata() {
 
 export default function Icon({ id }: { id: string }) {
   const size = id === '512' ? 512 : 192;
-  return new ImageResponse(
-    (
-      <div
-        style={{
-          width: '100%',
-          height: '100%',
-          background: '#C4A050',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontFamily: 'sans-serif',
-          fontWeight: 800,
-          fontSize: Math.round(size * 0.62),
-          lineHeight: 1,
-          color: '#000000',
-          letterSpacing: '-0.04em',
-        }}
-      >
-        M
-      </div>
-    ),
-    { width: size, height: size },
-  );
+  return new ImageResponse(renderOrbIcon(size), { width: size, height: size });
 }
