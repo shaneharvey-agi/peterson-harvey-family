@@ -54,15 +54,14 @@ export async function loadOrbIconFonts(): Promise<
 }
 
 export function renderOrbIcon(size: number): React.ReactElement {
-  // Outer dark frame mirrors the orb's `border: 3px solid tokens.bg` on a
-  // 56x56 button (3/56 ≈ 5.4%). The frame goes full-bleed; iOS auto-rounds
-  // the outer corners cleanly into a dark rounded ring.
-  const borderW = Math.max(3, Math.round(size * 0.054));
+  // Match the orb's `border: 3px solid tokens.bg` on a 56x56 button
+  // (3/56 ≈ 5.4%). Bumped to ~7% here for icon-grid visibility — the home
+  // screen renders the icon at ~60px, so a literal 3px-equivalent border
+  // (≈3.4px) reads as a hairline. 7% lands at ~13px on a 192 PNG → ~4px
+  // on the home screen, matches the orb's visual weight.
+  const borderW = Math.max(4, Math.round(size * 0.07));
   const innerSize = size - 2 * borderW;
-  // Inner gold rounds at ~26% to match the orb's borderRadius:16 on the
-  // 50x50 visible gold (16-3)/50 ≈ 0.26. overflow:hidden on the inner clips
-  // the strip's bottom corners to match.
-  const innerRadius = Math.round(innerSize * 0.26);
+  const radius = Math.round(size * 0.26);
   const stripHeight = Math.round(innerSize * 0.25);
   const mAreaHeight = innerSize - stripHeight;
   const mFontSize = Math.round(mAreaHeight * 0.92);
@@ -73,68 +72,62 @@ export function renderOrbIcon(size: number): React.ReactElement {
     Math.max(2, Math.round(innerSize * r)),
   );
 
+  // Single container with CSS border — more reliable in Satori than a
+  // padding-based frame approach. overflow:hidden + borderRadius clips
+  // the strip's bottom corners to the rounded shape.
   return (
     <div
       style={{
         width: '100%',
         height: '100%',
-        display: 'flex',
-        background: '#07090F',
-        padding: borderW,
         boxSizing: 'border-box',
+        background: '#C4A050',
+        border: `${borderW}px solid #07090F`,
+        borderRadius: radius,
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
       }}
     >
       <div
         style={{
           width: '100%',
-          height: '100%',
+          height: mAreaHeight,
           display: 'flex',
-          flexDirection: 'column',
-          background: '#C4A050',
-          borderRadius: innerRadius,
-          overflow: 'hidden',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontFamily: 'Inter',
+          fontWeight: 900,
+          fontSize: mFontSize,
+          lineHeight: 1,
+          color: '#000000',
+          letterSpacing: '-0.04em',
         }}
       >
-        <div
-          style={{
-            width: '100%',
-            height: mAreaHeight,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontFamily: 'Inter',
-            fontWeight: 900,
-            fontSize: mFontSize,
-            lineHeight: 1,
-            color: '#000000',
-            letterSpacing: '-0.04em',
-          }}
-        >
-          M
-        </div>
-        <div
-          style={{
-            width: '100%',
-            height: stripHeight,
-            background: '#07090F',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: barGap,
-          }}
-        >
-          {barHeights.map((h, i) => (
-            <div
-              key={i}
-              style={{
-                width: barWidth,
-                height: h,
-                background: '#C4A050',
-                borderRadius: barRadius,
-              }}
-            />
-          ))}
-        </div>
+        M
+      </div>
+      <div
+        style={{
+          width: '100%',
+          height: stripHeight,
+          background: '#07090F',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: barGap,
+        }}
+      >
+        {barHeights.map((h, i) => (
+          <div
+            key={i}
+            style={{
+              width: barWidth,
+              height: h,
+              background: '#C4A050',
+              borderRadius: barRadius,
+            }}
+          />
+        ))}
       </div>
     </div>
   );
