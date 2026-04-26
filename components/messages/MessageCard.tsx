@@ -1,6 +1,7 @@
 'use client';
 
 import { tokens, familyColor, familyBg, familyText, type FamilyMember } from '@/lib/design-tokens';
+import { MMark } from '@/components/icons/MMark';
 import type { Message } from '@/lib/queries/messages';
 
 interface Props {
@@ -136,28 +137,9 @@ export function MessageCard({ message, mediaUrl: _mediaUrl }: Props) {
 function Avatar({ message }: { message: Message }) {
   const { type, from, imageUrl } = message;
 
-  // Gold M square for brief
+  // Unified Mikayla mark for brief.
   if (type === 'brief') {
-    return (
-      <span
-        aria-hidden
-        style={{
-          width: 20,
-          height: 20,
-          borderRadius: 5,
-          background: tokens.gold,
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: '#07090F',
-          fontSize: 11,
-          fontWeight: 800,
-          flexShrink: 0,
-        }}
-      >
-        M
-      </span>
-    );
+    return <MMark size={20} />;
   }
 
   // Meal: recipe thumb

@@ -21,7 +21,7 @@ const BAR_DELAYS = ['0s', '0.1s', '0.2s', '0.15s', '0.05s', '0.25s'];
 export function MMark({ size = 32, waving = false }: Props) {
   const height = size;
   const width = Math.round(size * (32 / 34));
-  const stripHeight = Math.max(7, Math.round(height * 0.24));
+  const stripHeight = Math.max(5, Math.round(height * 0.24));
   const mFontSize = Math.round(height * 0.62);
   const mTextY = Math.round((height - stripHeight) * 0.78);
   const filterId = `mmark-wave-${size}`;

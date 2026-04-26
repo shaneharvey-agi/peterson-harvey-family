@@ -12,6 +12,7 @@ import {
   familyColor,
   type FamilyMember,
 } from '@/lib/design-tokens';
+import { MMark } from '@/components/icons/MMark';
 
 export default function MessagesInboxPage() {
   const [threads, setThreads] = useState<ThreadSummary[] | null>(null);
@@ -184,27 +185,18 @@ function ThreadRow({
 /* ─────────── avatars ─────────── */
 
 function MikaylaAvatar() {
+  // MMark provides the gold square / M / waveform / inner gold ring; the
+  // outer span layers the diffuse gold halo that highlights the Mikayla
+  // row in the inbox.
   return (
     <span
-      className="shrink-0 flex items-center justify-center"
+      className="shrink-0 inline-flex"
       style={{
-        width: 52,
-        height: 52,
-        borderRadius: 14,
-        background: tokens.gold,
+        borderRadius: 12,
         boxShadow: `0 0 16px ${tokens.goldGlow}`,
       }}
     >
-      <span
-        style={{
-          fontSize: 26,
-          fontWeight: 800,
-          color: '#07090F',
-          lineHeight: 1,
-        }}
-      >
-        M
-      </span>
+      <MMark size={52} />
     </span>
   );
 }

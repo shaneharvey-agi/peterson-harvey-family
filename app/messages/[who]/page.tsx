@@ -19,6 +19,7 @@ import {
   familyText,
   type FamilyMember,
 } from '@/lib/design-tokens';
+import { MMark } from '@/components/icons/MMark';
 
 const COMPOSER_HEIGHT = 62;
 const NAV_HEIGHT = 76; // approximate BottomNav height
@@ -428,22 +429,7 @@ function Bubble({
 function BubbleAvatar({ sender }: { sender: ChatMessage['sender'] }) {
   const [photoOk, setPhotoOk] = useState(true);
   if (sender === 'mikayla') {
-    return (
-      <span
-        className="flex items-center justify-center"
-        style={{
-          width: 28,
-          height: 28,
-          borderRadius: 7,
-          background: tokens.gold,
-          fontSize: 14,
-          fontWeight: 800,
-          color: '#07090F',
-        }}
-      >
-        M
-      </span>
-    );
+    return <MMark size={28} />;
   }
   const accent = familyColor(sender);
   return (
@@ -595,20 +581,16 @@ function placeholderFor(key: ThreadKey): string {
 
 function HeaderAvatar({ threadKey }: { threadKey: ThreadKey }) {
   if (threadKey === 'mikayla') {
+    // Outer span carries the diffuse gold halo around the unified mark.
     return (
       <span
-        className="shrink-0 flex items-center justify-center"
+        className="shrink-0 inline-flex"
         style={{
-          width: 32,
-          height: 32,
           borderRadius: 8,
-          background: tokens.gold,
           boxShadow: `0 0 10px ${tokens.goldGlow}`,
         }}
       >
-        <span style={{ fontSize: 16, fontWeight: 800, color: '#07090F' }}>
-          M
-        </span>
+        <MMark size={32} />
       </span>
     );
   }

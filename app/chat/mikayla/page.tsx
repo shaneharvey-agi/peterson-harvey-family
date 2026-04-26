@@ -352,22 +352,7 @@ function Bubble({
 }
 
 function MikaylaBubbleAvatar() {
-  return (
-    <span
-      className="flex items-center justify-center"
-      style={{
-        width: 28,
-        height: 28,
-        borderRadius: 7,
-        background: tokens.gold,
-        fontSize: 14,
-        fontWeight: 800,
-        color: '#07090F',
-      }}
-    >
-      M
-    </span>
-  );
+  return <MMark size={28} />;
 }
 
 /* ─────────── typing indicator ─────────── */
