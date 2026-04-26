@@ -54,17 +54,23 @@ export async function loadOrbIconFonts(): Promise<
 }
 
 export function renderOrbIcon(size: number): React.ReactElement {
-  const stripHeight = Math.round(size * 0.25);
-  const mAreaHeight = size - stripHeight;
-  // Larger fontSize ratio than the literal MOrb mapping — once Inter 900
-  // is loaded the glyph is THICK, and we want it to fill the gold area
-  // visually the way the live orb does at 56px.
+  // Outer dark frame mirrors the orb's `border: 3px solid tokens.bg` on a
+  // 56x56 button (3/56 ≈ 5.4%). The frame goes full-bleed; iOS auto-rounds
+  // the outer corners cleanly into a dark rounded ring.
+  const borderW = Math.max(3, Math.round(size * 0.054));
+  const innerSize = size - 2 * borderW;
+  // Inner gold rounds at ~26% to match the orb's borderRadius:16 on the
+  // 50x50 visible gold (16-3)/50 ≈ 0.26. overflow:hidden on the inner clips
+  // the strip's bottom corners to match.
+  const innerRadius = Math.round(innerSize * 0.26);
+  const stripHeight = Math.round(innerSize * 0.25);
+  const mAreaHeight = innerSize - stripHeight;
   const mFontSize = Math.round(mAreaHeight * 0.92);
-  const barWidth = Math.max(2, Math.round(size * 0.03));
-  const barGap = Math.max(2, Math.round(size * 0.027));
+  const barWidth = Math.max(2, Math.round(innerSize * 0.03));
+  const barGap = Math.max(2, Math.round(innerSize * 0.027));
   const barRadius = Math.max(1, Math.round(barWidth * 0.3));
   const barHeights = BAR_HEIGHT_RATIOS.map((r) =>
-    Math.max(2, Math.round(size * r)),
+    Math.max(2, Math.round(innerSize * r)),
   );
 
   return (
@@ -73,49 +79,62 @@ export function renderOrbIcon(size: number): React.ReactElement {
         width: '100%',
         height: '100%',
         display: 'flex',
-        flexDirection: 'column',
-        background: '#C4A050',
+        background: '#07090F',
+        padding: borderW,
+        boxSizing: 'border-box',
       }}
     >
       <div
         style={{
           width: '100%',
-          height: mAreaHeight,
+          height: '100%',
           display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontFamily: 'Inter',
-          fontWeight: 900,
-          fontSize: mFontSize,
-          lineHeight: 1,
-          color: '#000000',
-          letterSpacing: '-0.04em',
+          flexDirection: 'column',
+          background: '#C4A050',
+          borderRadius: innerRadius,
+          overflow: 'hidden',
         }}
       >
-        M
-      </div>
-      <div
-        style={{
-          width: '100%',
-          height: stripHeight,
-          background: '#07090F',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: barGap,
-        }}
-      >
-        {barHeights.map((h, i) => (
-          <div
-            key={i}
-            style={{
-              width: barWidth,
-              height: h,
-              background: '#C4A050',
-              borderRadius: barRadius,
-            }}
-          />
-        ))}
+        <div
+          style={{
+            width: '100%',
+            height: mAreaHeight,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontFamily: 'Inter',
+            fontWeight: 900,
+            fontSize: mFontSize,
+            lineHeight: 1,
+            color: '#000000',
+            letterSpacing: '-0.04em',
+          }}
+        >
+          M
+        </div>
+        <div
+          style={{
+            width: '100%',
+            height: stripHeight,
+            background: '#07090F',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: barGap,
+          }}
+        >
+          {barHeights.map((h, i) => (
+            <div
+              key={i}
+              style={{
+                width: barWidth,
+                height: h,
+                background: '#C4A050',
+                borderRadius: barRadius,
+              }}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );
