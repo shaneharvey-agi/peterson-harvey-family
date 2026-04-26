@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { tokens } from '@/lib/design-tokens';
 import { fetchUnreadCount } from '@/lib/queries/notifications';
 import { fetchTotalUnreadMessages } from '@/lib/queries/chatMessages';
+import { MMark } from '@/components/icons/MMark';
 import { QuickAddMenu } from './QuickAddMenu';
 
 export function TopStrip({ unreadMessages }: { unreadMessages?: number }) {
@@ -40,28 +41,15 @@ export function TopStrip({ unreadMessages }: { unreadMessages?: number }) {
       }}
     >
       <div className="flex items-center justify-between px-4 py-2.5">
-        {/* Left cluster */}
-        <div className="flex items-center gap-2">
-          <div
-            className="flex items-center justify-center"
-            style={{
-              width: 28,
-              height: 28,
-              borderRadius: 6,
-              background: tokens.gold,
-            }}
-          >
-            <span
-              style={{
-                fontSize: 18,
-                fontWeight: 800,
-                color: '#000',
-                lineHeight: 1,
-              }}
-            >
-              M
-            </span>
-          </div>
+        {/* Left cluster — unified brand logo: bottom-nav style M (gold square,
+            bold M, waveform strip) acts as the leading "M" of "Mikayla", so
+            the wordmark reads "ikayla" beside it. */}
+        <div
+          className="flex items-center"
+          aria-label="Mikayla"
+          style={{ gap: 4 }}
+        >
+          <MMark size={32} />
           <span
             className="wordmark"
             style={{
@@ -71,7 +59,7 @@ export function TopStrip({ unreadMessages }: { unreadMessages?: number }) {
               lineHeight: 1,
             }}
           >
-            Mikayla
+            ikayla
           </span>
         </div>
 

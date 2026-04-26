@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { tokens } from '@/lib/design-tokens';
 import { impact } from '@/lib/haptics';
+import { MMark } from '@/components/icons/MMark';
 
 const NAV_HEIGHT = 76;
 const COMPOSER_HEIGHT = 62;
@@ -248,18 +249,12 @@ function MikaylaChatPageInner() {
 
 function BrandCluster({ typing }: { typing: boolean }) {
   return (
-    <div className="flex items-center gap-2 min-w-0">
-      <div
-        className="flex items-center justify-center shrink-0"
-        style={{
-          width: 28,
-          height: 28,
-          borderRadius: 6,
-          background: tokens.gold,
-        }}
-      >
-        <BrandM typing={typing} />
-      </div>
+    <div
+      className="flex items-center min-w-0"
+      aria-label="Mikayla"
+      style={{ gap: 4 }}
+    >
+      <MMark size={32} waving={typing} />
       <span
         className="wordmark"
         style={{
@@ -269,87 +264,9 @@ function BrandCluster({ typing }: { typing: boolean }) {
           lineHeight: 1,
         }}
       >
-        Mikayla
+        ikayla
       </span>
     </div>
-  );
-}
-
-/**
- * The bold black "M" inside the gold square. Conditional `feTurbulence`
- * flag-wave activates only while Mikayla is typing — a subtle 3s breathing
- * ripple, lighter than the bottom MOrb's hold-state wave (4s/1.6 max).
- */
-function BrandM({ typing }: { typing: boolean }) {
-  return (
-    <svg
-      width={20}
-      height={22}
-      viewBox="0 0 20 22"
-      aria-hidden="true"
-      style={{ display: 'block', overflow: 'visible' }}
-    >
-      <defs>
-        {typing && (
-          <filter
-            id="brand-m-typing-wave"
-            x="-25%"
-            y="-30%"
-            width="150%"
-            height="160%"
-            filterUnits="objectBoundingBox"
-          >
-            <feTurbulence
-              type="fractalNoise"
-              baseFrequency="0.022 0.060"
-              numOctaves="2"
-              seed="5"
-              stitchTiles="stitch"
-              result="turb"
-            >
-              <animate
-                attributeName="baseFrequency"
-                dur="3s"
-                values="0.018 0.060; 0.030 0.048; 0.018 0.060"
-                keyTimes="0; 0.5; 1"
-                calcMode="spline"
-                keySplines="0.45 0.05 0.55 0.95; 0.45 0.05 0.55 0.95"
-                repeatCount="indefinite"
-              />
-            </feTurbulence>
-            <feDisplacementMap
-              in="SourceGraphic"
-              in2="turb"
-              scale="0"
-              xChannelSelector="R"
-              yChannelSelector="G"
-            >
-              <animate
-                attributeName="scale"
-                dur="3s"
-                values="0; 1.0; 0.3; 1.2; 0"
-                keyTimes="0; 0.28; 0.5; 0.78; 1"
-                calcMode="spline"
-                keySplines="0.45 0.05 0.55 0.95; 0.45 0.05 0.55 0.95; 0.45 0.05 0.55 0.95; 0.45 0.05 0.55 0.95"
-                repeatCount="indefinite"
-              />
-            </feDisplacementMap>
-          </filter>
-        )}
-      </defs>
-      <text
-        x="10"
-        y="17"
-        textAnchor="middle"
-        fontFamily="'Helvetica Neue', sans-serif"
-        fontSize="18"
-        fontWeight={800}
-        fill="#000"
-        filter={typing ? 'url(#brand-m-typing-wave)' : undefined}
-      >
-        M
-      </text>
-    </svg>
   );
 }
 
