@@ -16,10 +16,10 @@ import { supabase, type ChatMessageRow } from '@/lib/supabase';
 import {
   tokens,
   familyColor,
-  familyText,
   type FamilyMember,
 } from '@/lib/design-tokens';
 import { MMark } from '@/components/icons/MMark';
+import { MessageBubble } from '@/components/messages/MessageBubble';
 
 const COMPOSER_HEIGHT = 62;
 const NAV_HEIGHT = 76; // approximate BottomNav height
@@ -332,97 +332,27 @@ function Bubble({
   threadKey: ThreadKey;
 }) {
   const mine = message.sender === 'shane';
-  const isMikayla = message.sender === 'mikayla';
-  const memberAccent = !isMikayla
-    ? familyColor(message.sender as FamilyMember)
-    : tokens.gold;
-
-  const bg = mine
-    ? tokens.shane
-    : isMikayla
-      ? `${tokens.gold}22`
-      : `${memberAccent}22`;
-  const borderCol = mine
-    ? 'transparent'
-    : isMikayla
-      ? `${tokens.gold}66`
-      : `${memberAccent}55`;
-  const textCol = mine ? '#FFFFFF' : isMikayla ? '#F0E0B5' : '#FFFFFF';
-
   const time = new Date(message.createdAt).toLocaleTimeString(undefined, {
     hour: 'numeric',
     minute: '2-digit',
   });
 
+  // In the family thread, show the sender's name above their first
+  // bubble in a streak — soft gold per the unified spec.
+  const senderLabel =
+    !mine && showAvatar && threadKey === 'family'
+      ? capitalize(message.sender)
+      : undefined;
+
   return (
-    <div
-      className={`flex ${mine ? 'justify-end' : 'justify-start'}`}
-      style={{
-        gap: 6,
-        marginTop: tightTop ? 2 : 6,
-      }}
-    >
-      {!mine && (
-        <div className="shrink-0" style={{ width: 28 }}>
-          {showAvatar && (
-            <BubbleAvatar sender={message.sender} />
-          )}
-        </div>
-      )}
-      <div
-        className="flex flex-col"
-        style={{
-          maxWidth: '78%',
-          alignItems: mine ? 'flex-end' : 'flex-start',
-        }}
-      >
-        {!mine && showAvatar && threadKey === 'family' && (
-          <span
-            className="mb-0.5"
-            style={{
-              fontSize: 10,
-              fontWeight: 700,
-              letterSpacing: '0.4px',
-              color: isMikayla
-                ? tokens.gold
-                : familyText(message.sender as FamilyMember),
-              paddingLeft: 4,
-            }}
-          >
-            {capitalize(message.sender)}
-          </span>
-        )}
-        <div
-          style={{
-            background: bg,
-            border: `1px solid ${borderCol}`,
-            color: textCol,
-            fontSize: 14,
-            lineHeight: 1.35,
-            padding: '8px 12px',
-            borderRadius: 16,
-            borderTopLeftRadius: mine || tightTop ? 16 : 4,
-            borderTopRightRadius: mine && tightTop ? 4 : 16,
-            borderBottomRightRadius: mine ? 4 : 16,
-            borderBottomLeftRadius: !mine ? 4 : 16,
-            wordBreak: 'break-word',
-          }}
-        >
-          {message.body}
-        </div>
-        <span
-          className="mt-0.5"
-          style={{
-            fontSize: 9,
-            color: 'rgba(255,255,255,0.3)',
-            paddingLeft: mine ? 0 : 4,
-            paddingRight: mine ? 4 : 0,
-          }}
-        >
-          {time}
-        </span>
-      </div>
-    </div>
+    <MessageBubble
+      mine={mine}
+      tightTop={tightTop}
+      body={message.body}
+      timestamp={time}
+      senderLabel={senderLabel}
+      avatar={!mine && showAvatar ? <BubbleAvatar sender={message.sender} /> : null}
+    />
   );
 }
 
@@ -492,10 +422,7 @@ function Composer({
         width: '100%',
         maxWidth: 393,
         padding: '8px 12px',
-        background: 'rgba(7,9,15,0.95)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
-        borderTop: '0.5px solid rgba(255,255,255,0.08)',
+        background: 'transparent',
         zIndex: 9,
       }}
     >
@@ -503,8 +430,10 @@ function Composer({
         className="flex items-center"
         style={{
           gap: 8,
-          background: 'rgba(255,255,255,0.06)',
-          border: '1px solid rgba(255,255,255,0.08)',
+          background: 'rgba(7, 9, 15, 0.45)',
+          backdropFilter: 'blur(35px) saturate(1.15)',
+          WebkitBackdropFilter: 'blur(35px) saturate(1.15)',
+          border: '0.5px solid rgba(196, 160, 80, 0.55)',
           borderRadius: 999,
           padding: '6px 6px 6px 14px',
         }}

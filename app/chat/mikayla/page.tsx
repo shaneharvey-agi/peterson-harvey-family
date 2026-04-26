@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { tokens } from '@/lib/design-tokens';
 import { impact } from '@/lib/haptics';
 import { MMark } from '@/components/icons/MMark';
+import { MessageBubble } from '@/components/messages/MessageBubble';
 
 const NAV_HEIGHT = 76;
 const COMPOSER_HEIGHT = 62;
@@ -286,101 +287,40 @@ function Bubble({
   tightTop: boolean;
 }) {
   const mine = message.sender === 'shane';
-  const isMikayla = message.sender === 'mikayla';
-
-  const bg = mine ? tokens.shane : `${tokens.gold}22`;
-  const borderCol = mine ? 'transparent' : `${tokens.gold}66`;
-  const textCol = mine ? '#FFFFFF' : '#F0E0B5';
-
   const time = new Date(message.createdAt).toLocaleTimeString(undefined, {
     hour: 'numeric',
     minute: '2-digit',
   });
-
   return (
-    <div
-      className={`flex ${mine ? 'justify-end' : 'justify-start'}`}
-      style={{
-        gap: 6,
-        marginTop: tightTop ? 2 : 6,
-      }}
-    >
-      {!mine && (
-        <div className="shrink-0" style={{ width: 28 }}>
-          {showAvatar && isMikayla && <MikaylaBubbleAvatar />}
-        </div>
-      )}
-      <div
-        className="flex flex-col"
-        style={{
-          maxWidth: '78%',
-          alignItems: mine ? 'flex-end' : 'flex-start',
-        }}
-      >
-        <div
-          style={{
-            background: bg,
-            border: `1px solid ${borderCol}`,
-            color: textCol,
-            fontSize: 14,
-            lineHeight: 1.35,
-            padding: '8px 12px',
-            borderRadius: 16,
-            borderTopLeftRadius: mine || tightTop ? 16 : 4,
-            borderTopRightRadius: mine && tightTop ? 4 : 16,
-            borderBottomRightRadius: mine ? 4 : 16,
-            borderBottomLeftRadius: !mine ? 4 : 16,
-            wordBreak: 'break-word',
-          }}
-        >
-          {message.body}
-        </div>
-        <span
-          className="mt-0.5"
-          style={{
-            fontSize: 9,
-            color: 'rgba(255,255,255,0.3)',
-            paddingLeft: mine ? 0 : 4,
-            paddingRight: mine ? 4 : 0,
-          }}
-        >
-          {time}
-        </span>
-      </div>
-    </div>
+    <MessageBubble
+      mine={mine}
+      tightTop={tightTop}
+      body={message.body}
+      timestamp={time}
+      avatar={showAvatar && message.sender === 'mikayla' ? <MMark size={28} /> : null}
+    />
   );
-}
-
-function MikaylaBubbleAvatar() {
-  return <MMark size={28} />;
 }
 
 /* ─────────── typing indicator ─────────── */
 
 function TypingBubble() {
   return (
-    <div className="flex justify-start" style={{ gap: 6, marginTop: 6 }}>
-      <div className="shrink-0" style={{ width: 28 }}>
-        <MikaylaBubbleAvatar />
-      </div>
-      <div
-        style={{
-          background: `${tokens.gold}22`,
-          border: `1px solid ${tokens.gold}66`,
-          padding: '10px 14px',
-          borderRadius: 16,
-          borderBottomLeftRadius: 4,
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 4,
-        }}
-        aria-label="Mikayla is typing"
-      >
-        <Dot delay="0s" />
-        <Dot delay="0.18s" />
-        <Dot delay="0.36s" />
-      </div>
-    </div>
+    <MessageBubble
+      mine={false}
+      avatar={<MMark size={28} />}
+      ariaLabel="Mikayla is typing"
+      body={
+        <span
+          className="inline-flex items-center"
+          style={{ gap: 4, padding: '2px 0' }}
+        >
+          <Dot delay="0s" />
+          <Dot delay="0.18s" />
+          <Dot delay="0.36s" />
+        </span>
+      }
+    />
   );
 }
 
