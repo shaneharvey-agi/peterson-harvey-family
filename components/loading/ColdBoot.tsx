@@ -110,7 +110,7 @@ export function ColdBoot({ ready, onDone }: Props) {
           fontSize: 11,
           letterSpacing: '1.6px',
           textTransform: 'uppercase',
-          color: 'rgba(255,255,255,0.55)',
+          color: 'rgba(255,255,255,0.69)',
           fontWeight: 700,
           minHeight: 14,
           fontFamily: "'Helvetica Neue', sans-serif",
@@ -184,60 +184,64 @@ function LivingSignature() {
           height="160%"
           filterUnits="objectBoundingBox"
         >
-          {/* Static fractal noise — feOffset will scroll it L→R so the
-              wave actually travels across the fabric instead of just
-              breathing in place. */}
+          {/* Broad-wavelength fractal noise — low baseFrequency gives
+              long, organic crests; 3 octaves layer in fine detail
+              without breaking the macro shape. */}
           <feTurbulence
             type="fractalNoise"
-            baseFrequency="0.014 0.055"
-            numOctaves="2"
+            baseFrequency="0.008 0.03"
+            numOctaves="3"
             seed="7"
             stitchTiles="stitch"
             result="silk"
           />
-          {/* Scrolls the noise sample window from far-left to far-right
-              over 4s. Each source pixel reads displacement from a noise
-              location that drifts rightward, so the crests of the wave
-              physically travel L→R across the logo. */}
-          <feOffset in="silk" dx="0" dy="0" result="silkScroll">
+          {/* Smooth out the noise so the crests roll like wind across
+              cloth instead of pixelated chatter. */}
+          <feGaussianBlur in="silk" stdDeviation="1.4" result="silkSoft" />
+          {/* Continuous L→R scroll: dx animates linearly across a wide
+              range so the wave travels uniformly the entire cycle —
+              no acceleration changes, no flat moments. */}
+          <feOffset in="silkSoft" dx="0" dy="0" result="silkScroll">
             <animate
               attributeName="dx"
               dur="4s"
-              values="-90; 90"
+              values="-120; 120"
               keyTimes="0; 1"
               calcMode="linear"
               repeatCount="indefinite"
             />
           </feOffset>
+          {/* Displacement holds at a steady amplitude with a gentle
+              breathing variance — no zero crossings, so the silk never
+              flattens. */}
           <feDisplacementMap
             in="SourceGraphic"
             in2="silkScroll"
-            scale="6"
+            scale="7"
             xChannelSelector="R"
             yChannelSelector="G"
           >
             <animate
               attributeName="scale"
               dur="4s"
-              values="5; 7; 5; 7; 5"
+              values="6.5; 8; 6.5; 8; 6.5"
               keyTimes="0; 0.25; 0.5; 0.75; 1"
               calcMode="spline"
-              keySplines="0.45 0.05 0.55 0.95; 0.45 0.05 0.55 0.95; 0.45 0.05 0.55 0.95; 0.45 0.05 0.55 0.95"
+              keySplines="0.42 0 0.58 1; 0.42 0 0.58 1; 0.42 0 0.58 1; 0.42 0 0.58 1"
               repeatCount="indefinite"
             />
           </feDisplacementMap>
         </filter>
 
-        {/* Path shimmer — narrower, brighter highlight band that travels
-            L→R. Sharper stripe reads as a true reflection sliding
-            across gold silk rather than a soft wash. */}
+        {/* Path shimmer — soft gold-only sheen sliding L→R. No white
+            core; the peak is a warm cream that lifts the underlying
+            gold a stop or two via screen blending — reads as luster on
+            silk, not a specular blowout. */}
         <linearGradient id="cb-shimmer" x1="0" x2="1" y1="0" y2="0">
           <stop offset="0" stopColor="#FFFFFF" stopOpacity="0" />
-          <stop offset="0.46" stopColor="#FFFFFF" stopOpacity="0" />
-          <stop offset="0.49" stopColor="#FFF8E1" stopOpacity="0.85" />
-          <stop offset="0.50" stopColor="#FFFFFF" stopOpacity="1" />
-          <stop offset="0.51" stopColor="#FFF8E1" stopOpacity="0.85" />
-          <stop offset="0.54" stopColor="#FFFFFF" stopOpacity="0" />
+          <stop offset="0.40" stopColor="#FFFFFF" stopOpacity="0" />
+          <stop offset="0.50" stopColor="#FFFFFF" stopOpacity="0.55" />
+          <stop offset="0.60" stopColor="#FFFFFF" stopOpacity="0" />
           <stop offset="1" stopColor="#FFFFFF" stopOpacity="0" />
           <animateTransform
             attributeName="gradientTransform"
@@ -355,7 +359,7 @@ function LivingSignature() {
                 y={y}
                 width={barW}
                 height={scaledH}
-                fill="#FFFFFF"
+                fill="#FFE9B0"
               />
             );
           })}
@@ -366,7 +370,7 @@ function LivingSignature() {
             height={M_SIZE}
             rx={RX}
             fill="none"
-            stroke="#FFFFFF"
+            stroke="#FFE9B0"
             strokeWidth="1"
           />
           <text
@@ -376,7 +380,7 @@ function LivingSignature() {
             fontSize={WORD_FONT}
             fontWeight={800}
             letterSpacing="-0.4"
-            fill="#FFFFFF"
+            fill="#FFE9B0"
           >
             ikayla
           </text>
