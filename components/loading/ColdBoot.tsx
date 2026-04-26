@@ -184,36 +184,43 @@ function LivingSignature() {
           height="160%"
           filterUnits="objectBoundingBox"
         >
+          {/* Static fractal noise — feOffset will scroll it L→R so the
+              wave actually travels across the fabric instead of just
+              breathing in place. */}
           <feTurbulence
             type="fractalNoise"
-            baseFrequency="0.012 0.05"
+            baseFrequency="0.014 0.055"
             numOctaves="2"
             seed="7"
             stitchTiles="stitch"
             result="silk"
-          >
+          />
+          {/* Scrolls the noise sample window from far-left to far-right
+              over 4s. Each source pixel reads displacement from a noise
+              location that drifts rightward, so the crests of the wave
+              physically travel L→R across the logo. */}
+          <feOffset in="silk" dx="0" dy="0" result="silkScroll">
             <animate
-              attributeName="baseFrequency"
+              attributeName="dx"
               dur="4s"
-              values="0.010 0.050; 0.022 0.046; 0.010 0.050"
-              keyTimes="0; 0.5; 1"
-              calcMode="spline"
-              keySplines="0.45 0.05 0.55 0.95; 0.45 0.05 0.55 0.95"
+              values="-90; 90"
+              keyTimes="0; 1"
+              calcMode="linear"
               repeatCount="indefinite"
             />
-          </feTurbulence>
+          </feOffset>
           <feDisplacementMap
             in="SourceGraphic"
-            in2="silk"
-            scale="0"
+            in2="silkScroll"
+            scale="6"
             xChannelSelector="R"
             yChannelSelector="G"
           >
             <animate
               attributeName="scale"
               dur="4s"
-              values="0; 5.5; 1.8; 6.5; 0"
-              keyTimes="0; 0.28; 0.5; 0.72; 1"
+              values="5; 7; 5; 7; 5"
+              keyTimes="0; 0.25; 0.5; 0.75; 1"
               calcMode="spline"
               keySplines="0.45 0.05 0.55 0.95; 0.45 0.05 0.55 0.95; 0.45 0.05 0.55 0.95; 0.45 0.05 0.55 0.95"
               repeatCount="indefinite"
@@ -221,18 +228,25 @@ function LivingSignature() {
           </feDisplacementMap>
         </filter>
 
+        {/* Path shimmer — narrower, brighter highlight band that travels
+            L→R. Sharper stripe reads as a true reflection sliding
+            across gold silk rather than a soft wash. */}
         <linearGradient id="cb-shimmer" x1="0" x2="1" y1="0" y2="0">
           <stop offset="0" stopColor="#FFFFFF" stopOpacity="0" />
-          <stop offset="0.42" stopColor="#FFFFFF" stopOpacity="0" />
+          <stop offset="0.46" stopColor="#FFFFFF" stopOpacity="0" />
+          <stop offset="0.49" stopColor="#FFF8E1" stopOpacity="0.85" />
           <stop offset="0.50" stopColor="#FFFFFF" stopOpacity="1" />
-          <stop offset="0.58" stopColor="#FFFFFF" stopOpacity="0" />
+          <stop offset="0.51" stopColor="#FFF8E1" stopOpacity="0.85" />
+          <stop offset="0.54" stopColor="#FFFFFF" stopOpacity="0" />
           <stop offset="1" stopColor="#FFFFFF" stopOpacity="0" />
           <animateTransform
             attributeName="gradientTransform"
             type="translate"
-            values="-1 0; -1 0; 1 0; 1 0"
-            keyTimes="0; 0.12; 0.55; 1"
+            values="-1 0; 1 0; 1 0"
+            keyTimes="0; 0.7; 1"
             dur="4s"
+            calcMode="spline"
+            keySplines="0.4 0.05 0.5 1; 0 0 1 1"
             repeatCount="indefinite"
           />
         </linearGradient>
@@ -310,7 +324,7 @@ function LivingSignature() {
           fontSize={WORD_FONT}
           fontWeight={800}
           letterSpacing="-0.4"
-          fill="#FFFFFF"
+          fill={tokens.gold}
         >
           ikayla
         </text>
