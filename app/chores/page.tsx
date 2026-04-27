@@ -10,6 +10,7 @@ import {
   type FamilyMember,
 } from '@/lib/design-tokens';
 import { FamilyFilterChips } from '@/components/chores/FamilyFilterChips';
+import { impact } from '@/lib/haptics';
 
 // Active "I" of the app — the family-aware default for /chores.
 const CURRENT_USER: FamilyMember = 'shane';
@@ -150,38 +151,36 @@ export default function ChoresPage() {
           <span className="text-[11px] uppercase tracking-[1.5px] text-white/45">
             Chores
           </span>
-          <button
-            type="button"
-            onClick={() => setAddOpen((v) => !v)}
-            className="text-[12px] font-semibold"
-            style={{
-              color: addOpen ? 'rgba(255,255,255,0.55)' : tokens.gold,
-              padding: 0,
-              background: 'transparent',
-              border: 'none',
-            }}
-          >
-            {addOpen ? 'Close' : 'Add'}
-          </button>
+          {/* Right slot reserved for symmetry with Back; the primary
+              Add affordance lives in-content as a Liquid Glass tile so
+              it's in thumb-reach. */}
+          <span aria-hidden style={{ width: 36 }} />
         </div>
         <div className="px-4">
           <FamilyFilterChips active={activeFilter} onSelect={selectFilter} />
         </div>
       </header>
 
-      <div className="px-4 pb-24 pt-3 flex flex-col gap-3">
-        {addOpen && (
+      <div className="px-4 pb-24 pt-4 flex flex-col gap-3">
+        {addOpen ? (
           <AddChoreForm
             onSubmit={handleAdd}
+            onClose={() => setAddOpen(false)}
             busy={busy}
             assignee={activeFilter}
+          />
+        ) : (
+          <AddCta
+            memberName={memberName}
+            onTap={() => setAddOpen(true)}
+            prominent={items !== null && open.length === 0 && done.length === 0}
           />
         )}
 
         {items === null ? (
           <div className="pt-10 text-center text-white/40">Loading…</div>
         ) : open.length === 0 && done.length === 0 ? (
-          <EmptyState memberName={memberName} />
+          <EmptyHint />
         ) : (
           <>
             <Section label={`Open · ${open.length}`}>
@@ -210,14 +209,82 @@ export default function ChoresPage() {
   );
 }
 
-/* ─────────── add form ─────────── */
+/* ─────────── add CTA + form ─────────── */
+
+function AddCta({
+  memberName,
+  onTap,
+  prominent,
+}: {
+  memberName: string;
+  onTap: () => void;
+  /** When the list is empty, lift the tile vertically so it lands
+   *  near the middle of the viewport — that's where Shane wants the
+   *  primary affordance when there's open space. */
+  prominent: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        impact('light');
+        onTap();
+      }}
+      className="w-full flex items-center justify-center"
+      style={{
+        gap: 10,
+        padding: prominent ? '22px 18px' : '15px 18px',
+        marginTop: prominent ? 'clamp(40px, 18vh, 140px)' : 0,
+        borderRadius: 18,
+        background: 'rgba(15, 31, 56, 0.55)',
+        border: `0.5px solid ${tokens.gold}`,
+        backdropFilter: 'blur(35px) saturate(1.1)',
+        WebkitBackdropFilter: 'blur(35px) saturate(1.1)',
+        boxShadow: '0 0 12px 2px rgba(196, 160, 80, 0.10)',
+        color: tokens.gold,
+        fontSize: prominent ? 15 : 14,
+        fontWeight: 700,
+        letterSpacing: '0.3px',
+        cursor: 'pointer',
+        WebkitTapHighlightColor: 'transparent',
+        transition: 'padding 220ms cubic-bezier(0.22, 1, 0.36, 1), margin 220ms ease',
+      }}
+      aria-label={`Add a chore for ${memberName}`}
+    >
+      <PlusGlyph size={prominent ? 24 : 20} />
+      <span>Add for {memberName}</span>
+    </button>
+  );
+}
+
+function PlusGlyph({ size = 20 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden
+      style={{ flexShrink: 0 }}
+    >
+      <path
+        d="M12 4v16M4 12h16"
+        stroke={tokens.gold}
+        strokeWidth="2.2"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
 
 function AddChoreForm({
   onSubmit,
+  onClose,
   busy,
   assignee,
 }: {
   onSubmit: (v: { title: string; dueDate: string | null }) => void;
+  onClose: () => void;
   busy: boolean;
   assignee: FamilyMember;
 }) {
@@ -250,11 +317,37 @@ function AddChoreForm({
         padding: '12px 12px 10px',
       }}
     >
-      <div
-        className="text-[10px] uppercase tracking-[1.2px] mb-2"
-        style={{ color: familyColor(assignee), fontWeight: 700 }}
-      >
-        Adding for {capitalize(assignee)}
+      <div className="flex items-center justify-between mb-2">
+        <div
+          className="text-[10px] uppercase tracking-[1.2px]"
+          style={{ color: familyColor(assignee), fontWeight: 700 }}
+        >
+          Adding for {capitalize(assignee)}
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close add form"
+          className="flex items-center justify-center"
+          style={{
+            width: 26,
+            height: 26,
+            padding: 0,
+            background: 'rgba(255,255,255,0.06)',
+            border: '0.5px solid rgba(255,255,255,0.18)',
+            borderRadius: 999,
+            color: 'rgba(255,255,255,0.7)',
+          }}
+        >
+          <svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden>
+            <path
+              d="M2 2l8 8M10 2l-8 8"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+            />
+          </svg>
+        </button>
       </div>
 
       <input
@@ -423,14 +516,11 @@ function Section({
   );
 }
 
-function EmptyState({ memberName }: { memberName: string }) {
+function EmptyHint() {
   return (
-    <div className="pt-16 text-center">
-      <div className="text-[13px] text-white/55">
-        No chores for {memberName} yet.
-      </div>
-      <div className="text-[11px] text-white/35 mt-1">
-        Tap Add, or press-and-hold M to dictate.
+    <div className="pt-3 text-center">
+      <div className="text-[11px] text-white/35">
+        Or press-and-hold M to dictate.
       </div>
     </div>
   );
