@@ -53,8 +53,31 @@ export async function fetchChores(): Promise<Chore[]> {
 export async function fetchChoresByAssignee(
   assignee: FamilyMember,
 ): Promise<Chore[]> {
-  const all = await fetchChores();
-  return all.filter((c) => c.assignee === assignee);
+  // DB-level filter — push the predicate down to Supabase instead of
+  // fetching everything and filtering in JS. Same ordering as
+  // fetchChores(): open before done, then earliest-due first, then
+  // newest-created.
+  try {
+    const { data, error } = await supabase
+      .from('chores')
+      .select('*')
+      .eq('assignee', assignee)
+      .order('done_at', { ascending: true, nullsFirst: true })
+      .order('due_date', { ascending: true, nullsFirst: false })
+      .order('created_at', { ascending: false })
+      .limit(100);
+    if (error) throw error;
+    if (!data || data.length === 0) {
+      return mockChores.filter((c) => c.assignee === assignee);
+    }
+    return (data as ChoreRow[]).map(mapRow);
+  } catch (err) {
+    console.warn(
+      '[queries/chores] fetchChoresByAssignee falling back to mock:',
+      err,
+    );
+    return mockChores.filter((c) => c.assignee === assignee);
+  }
 }
 
 export async function fetchChoreById(id: string): Promise<Chore | null> {

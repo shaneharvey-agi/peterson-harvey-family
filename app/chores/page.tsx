@@ -7,17 +7,12 @@ import { addChore, completeChore } from '@/lib/mutations/chores';
 import {
   tokens,
   familyColor,
-  familyBg,
-  familyText,
   type FamilyMember,
 } from '@/lib/design-tokens';
+import { FamilyFilterChips } from '@/components/chores/FamilyFilterChips';
 
-const MEMBERS: { member: FamilyMember; letter: string }[] = [
-  { member: 'jax', letter: 'J' },
-  { member: 'evey', letter: 'E' },
-  { member: 'molly', letter: 'M' },
-  { member: 'shane', letter: 'S' },
-];
+// Active "I" of the app — the family-aware default for /chores.
+const CURRENT_USER: FamilyMember = 'shane';
 
 function isFamilyMember(v: string | null): v is FamilyMember {
   return v === 'shane' || v === 'molly' || v === 'evey' || v === 'jax';
@@ -27,17 +22,24 @@ export default function ChoresPage() {
   const [items, setItems] = useState<Chore[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
-  const [prefillAssignee, setPrefillAssignee] = useState<FamilyMember | null>(null);
+  const [activeFilter, setActiveFilter] = useState<FamilyMember>(CURRENT_USER);
 
+  // Initial sync: read URL once for ?who=/?for= and ?add=, then load all
+  // chores. We fetch the full list a single time and derive each
+  // member's view via useMemo, so chip taps are pure client-side
+  // re-renders — no Supabase round-trip per switch.
   useEffect(() => {
-    // Read URL params client-side so the page stays SSG-safe (no
-    // useSearchParams / Suspense requirement). Supports ?for=<member>&add=1
-    // from the avatar long-press "Add chore" action.
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
+      const who = params.get('who');
       const forParam = params.get('for');
       const addParam = params.get('add');
-      if (isFamilyMember(forParam)) setPrefillAssignee(forParam);
+      const seed = isFamilyMember(who)
+        ? who
+        : isFamilyMember(forParam)
+          ? forParam
+          : CURRENT_USER;
+      setActiveFilter(seed);
       if (addParam === '1') setAddOpen(true);
     }
     let alive = true;
@@ -50,12 +52,24 @@ export default function ChoresPage() {
     };
   }, []);
 
+  function selectFilter(member: FamilyMember) {
+    setActiveFilter(member);
+    if (typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    url.searchParams.set('who', member);
+    url.searchParams.delete('for');
+    window.history.replaceState({}, '', url.toString());
+  }
+
   const { open, done } = useMemo(() => {
     const o: Chore[] = [];
     const d: Chore[] = [];
-    for (const c of items ?? []) (c.doneAt === null ? o : d).push(c);
+    for (const c of items ?? []) {
+      if (c.assignee !== activeFilter) continue;
+      (c.doneAt === null ? o : d).push(c);
+    }
     return { open: o, done: d };
-  }, [items]);
+  }, [items, activeFilter]);
 
   async function handleToggle(c: Chore) {
     if (busy || c.doneAt !== null) return;
@@ -68,31 +82,26 @@ export default function ChoresPage() {
     setBusy(false);
   }
 
-  async function handleAdd(input: {
-    assignee: FamilyMember;
-    title: string;
-    dueDate: string | null;
-  }) {
+  async function handleAdd(input: { title: string; dueDate: string | null }) {
     if (busy) return;
     setBusy(true);
     const res = await addChore({
-      assignee: input.assignee,
+      assignee: activeFilter,
       title: input.title,
       dueDate: input.dueDate,
-      createdBy: 'shane',
+      createdBy: CURRENT_USER,
     });
     if (res.ok) {
       setItems((prev) => (prev ? [res.data, ...prev] : [res.data]));
       setAddOpen(false);
     } else {
-      // Preview/no-supabase: optimistically insert locally so the UI still feels live.
       const local: Chore = {
         id: `local-${Date.now()}`,
-        assignee: input.assignee,
+        assignee: activeFilter,
         title: input.title.trim(),
         dueDate: input.dueDate,
         doneAt: null,
-        createdBy: 'shane',
+        createdBy: CURRENT_USER,
         notes: undefined,
         createdAt: new Date().toISOString(),
       };
@@ -101,6 +110,8 @@ export default function ChoresPage() {
     }
     setBusy(false);
   }
+
+  const memberName = capitalize(activeFilter);
 
   return (
     <main
@@ -115,57 +126,68 @@ export default function ChoresPage() {
       }}
     >
       <header
-        className="flex items-center justify-between px-4"
         style={{
-          paddingTop: `calc(12px + env(safe-area-inset-top))`,
-          paddingBottom: 12,
           position: 'sticky',
           top: 0,
           zIndex: 10,
           background: 'rgba(7,9,15,0.92)',
           backdropFilter: 'blur(10px)',
+          WebkitBackdropFilter: 'blur(10px)',
+          // Generous top padding past env(safe-area-inset-top) so the Back
+          // affordance lives clear of the Dynamic Island on every iPhone.
+          paddingTop: `calc(14px + env(safe-area-inset-top))`,
+          paddingBottom: 8,
         }}
       >
-        <Link href="/" className="text-[13px] text-white/60 no-underline">
-          ← Back
-        </Link>
-        <span className="text-[11px] uppercase tracking-[1px] text-white/40">
-          Chores
-        </span>
-        <button
-          type="button"
-          onClick={() => setAddOpen((v) => !v)}
-          className="text-[11px] font-semibold"
-          style={{
-            color: tokens.gold,
-            padding: 0,
-            background: 'transparent',
-            border: 'none',
-          }}
-        >
-          {addOpen ? 'Close' : 'Add'}
-        </button>
+        <div className="flex items-center justify-between px-4 pb-2">
+          <Link
+            href="/"
+            className="text-[13px] text-white/65 no-underline"
+            style={{ fontWeight: 600 }}
+          >
+            ← Back
+          </Link>
+          <span className="text-[11px] uppercase tracking-[1.5px] text-white/45">
+            Chores
+          </span>
+          <button
+            type="button"
+            onClick={() => setAddOpen((v) => !v)}
+            className="text-[12px] font-semibold"
+            style={{
+              color: addOpen ? 'rgba(255,255,255,0.55)' : tokens.gold,
+              padding: 0,
+              background: 'transparent',
+              border: 'none',
+            }}
+          >
+            {addOpen ? 'Close' : 'Add'}
+          </button>
+        </div>
+        <div className="px-4">
+          <FamilyFilterChips active={activeFilter} onSelect={selectFilter} />
+        </div>
       </header>
 
-      <div className="px-4 pb-24 pt-2 flex flex-col gap-3">
+      <div className="px-4 pb-24 pt-3 flex flex-col gap-3">
         {addOpen && (
           <AddChoreForm
             onSubmit={handleAdd}
             busy={busy}
-            initialAssignee={prefillAssignee ?? 'jax'}
+            assignee={activeFilter}
           />
         )}
 
         {items === null ? (
           <div className="pt-10 text-center text-white/40">Loading…</div>
         ) : open.length === 0 && done.length === 0 ? (
-          <EmptyState />
+          <EmptyState memberName={memberName} />
         ) : (
           <>
             <Section label={`Open · ${open.length}`}>
               {open.length === 0 ? (
                 <div className="text-[12px] text-white/40 py-2">
-                  Nothing open. Nice.
+                  Nothing open for {memberName}. Nice.
                 </div>
               ) : (
                 open.map((c) => (
@@ -193,17 +215,12 @@ export default function ChoresPage() {
 function AddChoreForm({
   onSubmit,
   busy,
-  initialAssignee,
+  assignee,
 }: {
-  onSubmit: (v: {
-    assignee: FamilyMember;
-    title: string;
-    dueDate: string | null;
-  }) => void;
+  onSubmit: (v: { title: string; dueDate: string | null }) => void;
   busy: boolean;
-  initialAssignee: FamilyMember;
+  assignee: FamilyMember;
 }) {
-  const [assignee, setAssignee] = useState<FamilyMember>(initialAssignee);
   const [title, setTitle] = useState('');
   const [due, setDue] = useState<'today' | 'tomorrow' | 'none'>('today');
 
@@ -212,7 +229,6 @@ function AddChoreForm({
   function submit() {
     if (!canSubmit) return;
     onSubmit({
-      assignee,
       title,
       dueDate:
         due === 'none'
@@ -234,34 +250,11 @@ function AddChoreForm({
         padding: '12px 12px 10px',
       }}
     >
-      <div className="flex items-center gap-2 mb-2">
-        {MEMBERS.map((m) => {
-          const active = assignee === m.member;
-          return (
-            <button
-              key={m.member}
-              type="button"
-              onClick={() => setAssignee(m.member)}
-              className="flex items-center justify-center"
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: '50%',
-                background: familyBg(m.member),
-                border: `${active ? 2.5 : 1.5}px solid ${familyColor(m.member)}`,
-                color: familyText(m.member),
-                fontSize: 12,
-                fontWeight: 700,
-                padding: 0,
-                opacity: active ? 1 : 0.55,
-              }}
-              aria-pressed={active}
-              aria-label={`Assign to ${m.member}`}
-            >
-              {m.letter}
-            </button>
-          );
-        })}
+      <div
+        className="text-[10px] uppercase tracking-[1.2px] mb-2"
+        style={{ color: familyColor(assignee), fontWeight: 700 }}
+      >
+        Adding for {capitalize(assignee)}
       </div>
 
       <input
@@ -389,12 +382,6 @@ function ChoreRow({
           >
             {chore.title}
           </div>
-          <span
-            className="text-[10px] shrink-0 uppercase tracking-[0.5px]"
-            style={{ color: accent, fontWeight: 700 }}
-          >
-            {chore.assignee}
-          </span>
         </div>
         <div className="flex items-center gap-2 mt-0.5">
           {chore.dueDate && (
@@ -436,10 +423,12 @@ function Section({
   );
 }
 
-function EmptyState() {
+function EmptyState({ memberName }: { memberName: string }) {
   return (
     <div className="pt-16 text-center">
-      <div className="text-[13px] text-white/55">No chores yet.</div>
+      <div className="text-[13px] text-white/55">
+        No chores for {memberName} yet.
+      </div>
       <div className="text-[11px] text-white/35 mt-1">
         Tap Add, or press-and-hold M to dictate.
       </div>
@@ -448,6 +437,10 @@ function EmptyState() {
 }
 
 /* ─────────── helpers ─────────── */
+
+function capitalize(s: string): string {
+  return s.length === 0 ? s : s[0].toUpperCase() + s.slice(1);
+}
 
 function todayIso(offsetDays: number): string {
   const d = new Date();
