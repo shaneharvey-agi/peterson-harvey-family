@@ -11,7 +11,7 @@ const STATUS_MESSAGES = [
 ];
 
 const STATUS_INTERVAL_MS = 1400;
-const WAVE_CYCLE_MS = 4000;
+const WAVE_CYCLE_MS = 3500;
 const EXIT_MS = 900;
 
 interface Props {
@@ -24,10 +24,10 @@ interface Props {
 }
 
 /**
- * The Cold Boot splash — the user's first touchpoint with the brand.
- * Renders the unified Mikayla mark + "ikayla" wordmark as one SVG so a
- * single feTurbulence/feDisplacementMap silk-wave filter and a single
- * path-shimmer mask travel across the entire signature.
+ * The Cold Boot splash. Renders the unified Mikayla mark + "ikayla"
+ * wordmark on a clean navy canvas, with the same minimal flag-wave the
+ * home-screen MMark uses. No halos, no shimmer washes — just the brand
+ * mark breathing in place above the awakening status text.
  */
 export function ColdBoot({ ready, onDone }: Props) {
   const [statusIdx, setStatusIdx] = useState(0);
@@ -78,22 +78,6 @@ export function ColdBoot({ ready, onDone }: Props) {
       }}
     >
       <div
-        aria-hidden
-        style={{
-          position: 'absolute',
-          width: 520,
-          height: 520,
-          borderRadius: '50%',
-          background:
-            'radial-gradient(closest-side, rgba(196,160,80,0.18), rgba(196,160,80,0.06) 50%, rgba(196,160,80,0) 75%)',
-          filter: 'blur(8px)',
-          pointerEvents: 'none',
-          opacity: exiting ? 0 : 1,
-          transition: `opacity ${EXIT_MS}ms ease`,
-        }}
-      />
-
-      <div
         style={{
           transform: exiting ? 'scale(4)' : 'scale(1)',
           transition: `transform ${EXIT_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`,
@@ -110,7 +94,7 @@ export function ColdBoot({ ready, onDone }: Props) {
           fontSize: 11,
           letterSpacing: '1.6px',
           textTransform: 'uppercase',
-          color: 'rgba(255,255,255,0.69)',
+          color: 'rgba(255,255,255,0.92)',
           fontWeight: 700,
           minHeight: 14,
           fontFamily: "'Helvetica Neue', sans-serif",
@@ -142,9 +126,10 @@ export function ColdBoot({ ready, onDone }: Props) {
 }
 
 /**
- * The full Mikayla logo — gold M monogram + "ikayla" wordmark — rendered
- * as a single SVG so the silk-wave filter and shimmer mask treat the
- * signature as one cohesive piece of fabric.
+ * Mikayla mark + "ikayla" wordmark as one SVG. The flag-wave filter is
+ * the same minimal feTurbulence/feDisplacementMap pair used by the
+ * home-screen MMark, so the cold boot reads as the same brand mark
+ * the user sees throughout the app — just larger.
  */
 function LivingSignature() {
   const M_SIZE = 64;
@@ -176,95 +161,52 @@ function LivingSignature() {
       aria-label="Mikayla"
     >
       <defs>
+        {/* Same minimal flag-wave as MMark's `waving` mode — soft
+            in-place breathing ripple at small amplitude. */}
         <filter
           id="cb-wave"
-          x="-15%"
-          y="-30%"
-          width="130%"
-          height="160%"
+          x="-10%"
+          y="-20%"
+          width="120%"
+          height="140%"
           filterUnits="objectBoundingBox"
         >
-          {/* Broad-wavelength fractal noise — low baseFrequency gives
-              long, organic crests; 3 octaves layer in fine detail
-              without breaking the macro shape. */}
           <feTurbulence
             type="fractalNoise"
-            baseFrequency="0.008 0.03"
-            numOctaves="3"
-            seed="7"
+            baseFrequency="0.022 0.060"
+            numOctaves="2"
+            seed="5"
             stitchTiles="stitch"
-            result="silk"
-          />
-          {/* Smooth out the noise so the crests roll like wind across
-              cloth instead of pixelated chatter. */}
-          <feGaussianBlur in="silk" stdDeviation="1.4" result="silkSoft" />
-          {/* Continuous L→R scroll: dx animates linearly across a wide
-              range so the wave travels uniformly the entire cycle —
-              no acceleration changes, no flat moments. */}
-          <feOffset in="silkSoft" dx="0" dy="0" result="silkScroll">
+            result="turb"
+          >
             <animate
-              attributeName="dx"
-              dur="4s"
-              values="-120; 120"
-              keyTimes="0; 1"
-              calcMode="linear"
+              attributeName="baseFrequency"
+              dur="3.5s"
+              values="0.018 0.060; 0.030 0.048; 0.018 0.060"
+              keyTimes="0; 0.5; 1"
+              calcMode="spline"
+              keySplines="0.45 0.05 0.55 0.95; 0.45 0.05 0.55 0.95"
               repeatCount="indefinite"
             />
-          </feOffset>
-          {/* Displacement holds at a steady amplitude with a gentle
-              breathing variance — no zero crossings, so the silk never
-              flattens. */}
+          </feTurbulence>
           <feDisplacementMap
             in="SourceGraphic"
-            in2="silkScroll"
-            scale="7"
+            in2="turb"
+            scale="0"
             xChannelSelector="R"
             yChannelSelector="G"
           >
             <animate
               attributeName="scale"
-              dur="4s"
-              values="6.5; 8; 6.5; 8; 6.5"
-              keyTimes="0; 0.25; 0.5; 0.75; 1"
+              dur="3.5s"
+              values="0; 1.6; 0.5; 2; 0"
+              keyTimes="0; 0.28; 0.5; 0.72; 1"
               calcMode="spline"
-              keySplines="0.42 0 0.58 1; 0.42 0 0.58 1; 0.42 0 0.58 1; 0.42 0 0.58 1"
+              keySplines="0.45 0.05 0.55 0.95; 0.45 0.05 0.55 0.95; 0.45 0.05 0.55 0.95; 0.45 0.05 0.55 0.95"
               repeatCount="indefinite"
             />
           </feDisplacementMap>
         </filter>
-
-        {/* Path shimmer — soft gold-only sheen sliding L→R. No white
-            core; the peak is a warm cream that lifts the underlying
-            gold a stop or two via screen blending — reads as luster on
-            silk, not a specular blowout. */}
-        <linearGradient id="cb-shimmer" x1="0" x2="1" y1="0" y2="0">
-          <stop offset="0" stopColor="#FFFFFF" stopOpacity="0" />
-          <stop offset="0.40" stopColor="#FFFFFF" stopOpacity="0" />
-          <stop offset="0.50" stopColor="#FFFFFF" stopOpacity="0.55" />
-          <stop offset="0.60" stopColor="#FFFFFF" stopOpacity="0" />
-          <stop offset="1" stopColor="#FFFFFF" stopOpacity="0" />
-          <animateTransform
-            attributeName="gradientTransform"
-            type="translate"
-            values="-1 0; 1 0; 1 0"
-            keyTimes="0; 0.7; 1"
-            dur="4s"
-            calcMode="spline"
-            keySplines="0.4 0.05 0.5 1; 0 0 1 1"
-            repeatCount="indefinite"
-          />
-        </linearGradient>
-
-        <mask
-          id="cb-shimmerMask"
-          maskUnits="userSpaceOnUse"
-          x="0"
-          y="0"
-          width={W}
-          height={H}
-        >
-          <rect x="0" y="0" width={W} height={H} fill="url(#cb-shimmer)" />
-        </mask>
       </defs>
 
       <g filter="url(#cb-wave)">
@@ -310,6 +252,18 @@ function LivingSignature() {
             />
           );
         })}
+        {/* Inset black hairline — 1px inside the gold edge for visible
+            depth. Reads as a recessed bevel on a metal plaque. */}
+        <rect
+          x={M_X + 1}
+          y={M_Y + 1}
+          width={M_SIZE - 2}
+          height={M_SIZE - 2}
+          rx={Math.max(0, RX - 1)}
+          fill="none"
+          stroke="rgba(0,0,0,0.55)"
+          strokeWidth="0.6"
+        />
         <rect
           x={M_X}
           y={M_Y}
@@ -332,59 +286,6 @@ function LivingSignature() {
         >
           ikayla
         </text>
-
-        <g
-          mask="url(#cb-shimmerMask)"
-          style={{ mixBlendMode: 'screen' }}
-        >
-          <text
-            x={M_X + M_SIZE / 2}
-            y={M_Y + M_TEXT_Y}
-            textAnchor="middle"
-            fontFamily="'Helvetica Neue', sans-serif"
-            fontSize={M_FONT}
-            fontWeight={800}
-            fill="#FFE9B0"
-          >
-            M
-          </text>
-          {heights.map((h, i) => {
-            const scaledH = Math.max(2, Math.round((h / 9) * (STRIP - 2)));
-            const x = stripStartX + i * (barW + gap);
-            const y = stripBaseY - scaledH;
-            return (
-              <rect
-                key={`sh-${i}`}
-                x={x}
-                y={y}
-                width={barW}
-                height={scaledH}
-                fill="#FFE9B0"
-              />
-            );
-          })}
-          <rect
-            x={M_X}
-            y={M_Y}
-            width={M_SIZE}
-            height={M_SIZE}
-            rx={RX}
-            fill="none"
-            stroke="#FFE9B0"
-            strokeWidth="1"
-          />
-          <text
-            x={WORD_X}
-            y={WORD_Y}
-            fontFamily="'Helvetica Neue', sans-serif"
-            fontSize={WORD_FONT}
-            fontWeight={800}
-            letterSpacing="-0.4"
-            fill="#FFE9B0"
-          >
-            ikayla
-          </text>
-        </g>
       </g>
     </svg>
   );

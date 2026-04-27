@@ -8,27 +8,26 @@ const MIN_BOOT_MS = 4200;
 
 /**
  * Mounts the Cold Boot splash exactly once per session (which equals
- * once per PWA launch / browser tab). Races a minimum on-screen
- * duration against `document.readyState === 'complete'` and a warm
- * Supabase ping; flips the splash to its step-through exit when both
- * resolve.
+ * once per PWA launch / browser tab). The splash renders optimistically
+ * on the first paint (matching SSR) so there's no JS-hydration delay
+ * before the user sees the brand; if sessionStorage says it's already
+ * been shown, the gate dismisses it immediately on mount.
  */
 export function ColdBootGate() {
-  const [mounted, setMounted] = useState(false);
-  const [show, setShow] = useState(false);
+  const [show, setShow] = useState(true);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
-
     let seen = false;
     try {
       seen = sessionStorage.getItem(SESSION_KEY) === '1';
     } catch {
       /* private mode — assume not seen */
     }
-    if (seen) return;
-    setShow(true);
+    if (seen) {
+      setShow(false);
+      return;
+    }
 
     let cancelled = false;
     const start = performance.now();
@@ -72,7 +71,7 @@ export function ColdBootGate() {
     };
   }, []);
 
-  if (!mounted || !show) return null;
+  if (!show) return null;
 
   return (
     <ColdBoot
