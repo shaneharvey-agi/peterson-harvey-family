@@ -19,7 +19,7 @@ export interface Task {
 }
 
 /** Adults get "To-Do" labels; kids get "Chore" labels. */
-const ADULTS: FamilyMember[] = ['shane'];
+const ADULTS: FamilyMember[] = ['shane', 'molly'];
 
 export interface TaskListLabel {
   singular: string;            // "to-do" | "chore"
