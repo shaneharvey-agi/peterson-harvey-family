@@ -9,7 +9,7 @@ type Tab = 'home' | 'todo' | 'kitchen' | 'meals';
 
 function tabFromPath(pathname: string | null): Tab {
   if (!pathname) return 'home';
-  if (pathname.startsWith('/chores')) return 'todo';
+  if (pathname.startsWith('/tasks') || pathname.startsWith('/chores')) return 'todo';
   // /kitchen and /meals don't exist yet — every other route reads as "home".
   return 'home';
 }
@@ -32,7 +32,7 @@ export function BottomNav({ active }: { active?: Tab } = {}) {
     >
       <div className="flex items-end justify-between">
         <NavItem label="Home" active={resolved === 'home'} icon={<HomeIcon active={resolved === 'home'} />} onClick={() => router.push('/')} />
-        <NavItem label="To Do" active={resolved === 'todo'} icon={<TodoIcon active={resolved === 'todo'} />} onClick={() => router.push('/chores')} />
+        <NavItem label="Tasks" active={resolved === 'todo'} icon={<TodoIcon active={resolved === 'todo'} />} onClick={() => router.push('/tasks')} />
         <div className="flex flex-col items-center" style={{ width: 56 }}>
           <MOrb />
         </div>

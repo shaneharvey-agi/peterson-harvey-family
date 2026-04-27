@@ -7,10 +7,9 @@ import { tokens, type FamilyMember } from '@/lib/design-tokens';
 import { flutter, impact, success } from '@/lib/haptics';
 import { isSpeechSupported, startSpeech, type SpeechSession } from '@/lib/speech';
 import { sendMessage } from '@/lib/mutations/chatMessages';
-import { addChore } from '@/lib/mutations/chores';
+import { addTask } from '@/lib/mutations/tasks';
 import { sendRequest } from '@/lib/mutations/requests';
 import { saveMemory } from '@/lib/mutations/memories';
-import { addTodo } from '@/lib/mutations/todos';
 
 const HOLD_MS = 260;
 const WAVE_CYCLE_MS = 4000;
@@ -19,7 +18,7 @@ const BAR_HEIGHTS = [3, 6, 9, 5, 8, 4];
 const BAR_DELAYS = ['0s', '0.1s', '0.2s', '0.15s', '0.05s', '0.25s'];
 
 type Recipient = 'shane' | 'molly' | 'evey' | 'jax' | 'family';
-type IntentKind = 'message' | 'request' | 'chore' | 'todo' | 'brain_dump' | 'filter';
+type IntentKind = 'message' | 'request' | 'task' | 'brain_dump' | 'filter';
 
 interface IntentResponse {
   kind: IntentKind;
@@ -30,9 +29,10 @@ interface IntentResponse {
 
 const CURRENT_USER: FamilyMember = 'shane';
 
-function pickAssignee(recipient: Recipient | undefined): FamilyMember | null {
-  // Chores need a real human assignee. "family" / unset → no assignee.
-  if (!recipient || recipient === 'family') return null;
+function pickTaskAssignee(recipient: Recipient | undefined): FamilyMember {
+  // Tasks always land on someone. Default to the speaker (Shane) when
+  // no individual is named — "family" is not a real assignee.
+  if (!recipient || recipient === 'family') return CURRENT_USER;
   return recipient;
 }
 
@@ -166,10 +166,9 @@ export function MOrb() {
           if (result.ok) confirm();
           return;
         }
-        case 'chore': {
-          const assignee = pickAssignee(recipient);
-          if (!assignee) return fallbackToChat();
-          const result = await addChore({
+        case 'task': {
+          const assignee = pickTaskAssignee(recipient);
+          const result = await addTask({
             assignee,
             title: body,
             dueDate: null,
@@ -193,12 +192,6 @@ export function MOrb() {
             toId: target,
             content: body,
           });
-          if (result.ok) confirm();
-          else fallbackToChat();
-          return;
-        }
-        case 'todo': {
-          const result = await addTodo({ text: body });
           if (result.ok) confirm();
           else fallbackToChat();
           return;

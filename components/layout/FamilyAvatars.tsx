@@ -88,7 +88,7 @@ export function FamilyAvatars({ members = DEFAULT_MEMBERS }: { members?: AvatarM
         setWho(active === member ? null : member);
         break;
       case 'chore':
-        router.push(`/chores?for=${member}&add=1`);
+        router.push(`/tasks?for=${member}&add=1`);
         break;
       case 'message':
         router.push(`/messages/${member}`);

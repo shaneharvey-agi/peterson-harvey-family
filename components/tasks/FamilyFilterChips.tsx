@@ -33,7 +33,7 @@ export function FamilyFilterChips({ active, onSelect }: Props) {
         touchAction: 'pan-x',
       }}
       role="tablist"
-      aria-label="Filter chores by family member"
+      aria-label="Filter tasks by family member"
     >
       <div
         className="flex items-center px-4"

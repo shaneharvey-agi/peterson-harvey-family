@@ -1,72 +1,72 @@
-// lib/mutations/chores.ts
+// lib/mutations/tasks.ts
 //
-// Voice-first chore mutations. Same contract as events/notifications:
-// plain typed input, MutationResult return, no UI coupling. Mikayla's
-// voice handler and the /chores page both call these same functions.
+// Unified task mutations. Replaces lib/mutations/chores.ts and
+// lib/mutations/todos.ts. Both the /tasks page and the M Orb voice
+// dispatch call these directly.
 
-import { supabase, type ChoreRow } from '@/lib/supabase';
+import { supabase, type TaskRow } from '@/lib/supabase';
 import type { FamilyMember } from '@/lib/design-tokens';
-import type { Chore } from '@/lib/queries/chores';
+import { mapRow, type Task } from '@/lib/queries/tasks';
 
 export type MutationResult<T> =
   | { ok: true; data: T }
   | { ok: false; error: string };
 
-export interface AddChoreInput {
+export interface AddTaskInput {
   assignee: FamilyMember;
   title: string;
-  dueDate: string | null;   // YYYY-MM-DD or null
-  createdBy: FamilyMember | null;
-  notes?: string;
+  dueDate?: string | null;       // YYYY-MM-DD or null
+  createdBy?: FamilyMember | null;
+  notes?: string | null;
 }
 
-function isValidDate(v: string | null): boolean {
-  if (v === null) return true;
+function isValidDate(v: string | null | undefined): boolean {
+  if (v === null || v === undefined) return true;
   return /^\d{4}-\d{2}-\d{2}$/.test(v);
 }
 
-function validate(input: AddChoreInput): string | null {
+function validate(input: AddTaskInput): string | null {
   if (!input.assignee) return 'Assignee is required.';
   if (!input.title.trim()) return 'Title is required.';
   if (!isValidDate(input.dueDate)) return 'Invalid due date.';
   return null;
 }
 
-export async function addChore(
-  input: AddChoreInput,
-): Promise<MutationResult<Chore>> {
+export async function addTask(
+  input: AddTaskInput,
+): Promise<MutationResult<Task>> {
   const err = validate(input);
   if (err) return { ok: false, error: err };
   try {
     const { data, error } = await supabase
-      .from('chores')
+      .from('tasks')
       .insert({
         assignee: input.assignee,
         title: input.title.trim(),
-        due_date: input.dueDate,
-        created_by: input.createdBy,
+        due_date: input.dueDate ?? null,
+        created_by: input.createdBy ?? null,
         notes: input.notes ?? null,
       })
       .select('*')
       .single();
     if (error) throw error;
-    return { ok: true, data: rowToChore(data as ChoreRow) };
+    return { ok: true, data: mapRow(data as TaskRow) };
   } catch (e) {
     return { ok: false, error: humanize(e) };
   }
 }
 
-export async function completeChore(
+export async function completeTask(
   id: string,
 ): Promise<MutationResult<{ id: string; doneAt: string }>> {
   const numeric = Number(id);
   if (!Number.isFinite(numeric)) {
-    return { ok: false, error: 'Invalid chore id.' };
+    return { ok: false, error: 'Invalid task id.' };
   }
   const doneAt = new Date().toISOString();
   try {
     const { error } = await supabase
-      .from('chores')
+      .from('tasks')
       .update({ done_at: doneAt })
       .eq('id', numeric);
     if (error) throw error;
@@ -76,17 +76,17 @@ export async function completeChore(
   }
 }
 
-export async function reassignChore(
+export async function reassignTask(
   id: string,
   assignee: FamilyMember,
 ): Promise<MutationResult<{ id: string; assignee: FamilyMember }>> {
   const numeric = Number(id);
   if (!Number.isFinite(numeric)) {
-    return { ok: false, error: 'Invalid chore id.' };
+    return { ok: false, error: 'Invalid task id.' };
   }
   try {
     const { error } = await supabase
-      .from('chores')
+      .from('tasks')
       .update({ assignee })
       .eq('id', numeric);
     if (error) throw error;
@@ -101,24 +101,4 @@ function humanize(e: unknown): string {
     return String((e as { message: unknown }).message);
   }
   return 'Unknown error.';
-}
-
-function rowToChore(row: ChoreRow): Chore {
-  const normalize = (w: string | null): FamilyMember => {
-    const v = (w || '').toLowerCase().trim();
-    if (v.includes('shane')) return 'shane';
-    if (v.includes('molly')) return 'molly';
-    if (v.includes('evey')) return 'evey';
-    return 'jax';
-  };
-  return {
-    id: String(row.id),
-    assignee: normalize(row.assignee),
-    title: row.title || '',
-    dueDate: row.due_date,
-    doneAt: row.done_at,
-    createdBy: row.created_by ? normalize(row.created_by) : null,
-    notes: row.notes ?? undefined,
-    createdAt: row.created_at,
-  };
 }

@@ -18,7 +18,7 @@ const ITEMS: MenuItem[] = [
   { key: 'scanDoc',    label: 'Scan Doc',    href: '/scan',          icon: <ScanDocIcon /> },
   { key: 'findDinner', label: 'Find Dinner', href: '/dinner',        icon: <FindDinnerIcon /> },
   { key: 'recordMeal', label: 'Record Meal', href: '/meals/record',  icon: <RecordMealIcon /> },
-  { key: 'familyTask', label: 'Family Task', href: '/chores?add=1',  icon: <FamilyTaskIcon /> },
+  { key: 'familyTask', label: 'Family Task', href: '/tasks?add=1',  icon: <FamilyTaskIcon /> },
   { key: 'more',       label: 'More',        href: '/more',          icon: <MoreIcon /> },
 ];
 

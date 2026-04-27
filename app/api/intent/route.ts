@@ -12,10 +12,14 @@ import { NextRequest, NextResponse } from 'next/server';
  *
  * Output:
  *   { kind, content, recipient?, source }
- *     kind:      'message'|'request'|'chore'|'todo'|'brain_dump'|'filter'
+ *     kind:      'message'|'request'|'task'|'brain_dump'|'filter'
  *     content:   cleaned transcript with addressing/filler stripped
  *     recipient: 'shane'|'molly'|'evey'|'jax'|'family' if a target is named
  *     source:    'haiku' | 'fallback'
+ *
+ *   `task` is the unified per-person to-do (UI labels it "Chore" for
+ *   kids, "To-Do" for adults). recipient is the assignee — defaults to
+ *   Shane (the speaker) when no one else is named.
  *
  * Falls back to a rule-based classifier when ANTHROPIC_API_KEY is unset
  * or Haiku errors. Never throws — always returns a valid intent.
@@ -23,7 +27,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'edge';
 
-type IntentKind = 'message' | 'request' | 'chore' | 'todo' | 'brain_dump' | 'filter';
+type IntentKind = 'message' | 'request' | 'task' | 'brain_dump' | 'filter';
 type Recipient = 'shane' | 'molly' | 'evey' | 'jax' | 'family';
 
 interface IntentResponse {
@@ -43,16 +47,15 @@ const SYSTEM_PROMPT = [
   '',
   'kind is one of:',
   '- "message"    — relaying information to a person. e.g. "Tell Molly I\'m running late."',
-  '- "chore"      — assignable household task for a KID (Molly/Evey/Jax). Has a non-Shane recipient. e.g. "Add walk the dogs to Jax\'s list."',
-  '- "request"    — asking another person to do a specific favor right now. e.g. "Molly, can you grab the dry cleaning?"',
-  '- "todo"       — actionable to-do for SHANE HIMSELF. Action verb, no other recipient. e.g. "Pick up milk", "Look into the new espresso machine", "Remind me to call the contractor tomorrow", "Add review the Boujie listing to my list".',
+  '- "task"       — an action item to track on someone\'s list (chore for a kid, to-do for an adult). e.g. "Add walk the dogs to Jax\'s list", "Pick up milk", "Remind me to call the contractor tomorrow", "Add review the Boujie listing to my list". The recipient field is the ASSIGNEE — leave blank to default to Shane.',
+  '- "request"    — asking another person to do a specific favor RIGHT NOW (one-off, not list-tracked). e.g. "Molly, can you grab the dry cleaning?". Must have a non-Shane recipient.',
   '- "brain_dump" — a thought, note, observation, or idea — not a concrete action. e.g. "I think Hawaii would be good for the family vacation this year." or "Molly seemed tired today."',
   '- "filter"     — wants to see only one person\'s calendar/day. e.g. "Show me Evey\'s schedule."',
   '',
-  'todo vs brain_dump: if Shane could put a checkbox next to it, it\'s a todo.',
-  'todo vs chore: chore has a kid recipient; todo is for Shane himself.',
+  'task vs request: a task lives on a list (persistent); a request is an immediate one-time ask.',
+  'task vs brain_dump: if Shane could put a checkbox next to it, it\'s a task.',
   '',
-  'content: the cleaned message body with addressing/filler stripped.',
+  'content: the cleaned body with addressing/filler stripped.',
   '  "Tell Molly I\'m running late" → "I\'m running late"',
   '  "Add walk the dogs to Jax\'s list" → "Walk the dogs"',
   '  "Molly, can you grab the dry cleaning" → "Can you grab the dry cleaning?"',
@@ -62,7 +65,8 @@ const SYSTEM_PROMPT = [
   'recipient: one of "shane", "molly", "evey", "jax", "family", or "" if none.',
   '  Aliases: "mom"/"mommy" → molly, "dad"/"daddy" → shane,',
   '  "the family"/"everyone"/"the kids"/"household" → family.',
-  '  todo and brain_dump default to recipient="" (they belong to Shane himself).',
+  '  For tasks: recipient = ASSIGNEE. If Shane says it about himself or no assignee is named, leave blank.',
+  '  brain_dump defaults to recipient="" (they belong to Shane himself).',
 ].join('\n');
 
 export async function POST(req: NextRequest) {
@@ -146,16 +150,21 @@ function normalizeKind(raw: unknown): IntentKind | null {
   if (
     s === 'message' ||
     s === 'request' ||
-    s === 'chore' ||
-    s === 'todo' ||
+    s === 'task' ||
     s === 'brain_dump' ||
     s === 'filter'
   ) {
     return s;
   }
-  // Common synonyms Haiku may emit.
-  if (s === 'task' || s === 'to_do' || s === 'reminder' || s === 'remind') {
-    return 'todo';
+  // Legacy buckets / synonyms collapse into 'task' or 'brain_dump'.
+  if (
+    s === 'chore' ||
+    s === 'todo' ||
+    s === 'to_do' ||
+    s === 'reminder' ||
+    s === 'remind'
+  ) {
+    return 'task';
   }
   if (s === 'note' || s === 'memory' || s === 'thought' || s === 'idea') {
     return 'brain_dump';
@@ -196,9 +205,9 @@ function rulesFallback(transcript: string, hint: Recipient | undefined): IntentR
     }
   }
 
-  // Strip "add ... to my list" framing so the body is the bare task.
-  const myList = body.match(/^add\s+(.+?)\s+to\s+(?:my|the)\s+(?:list|todos?|to[- ]?do(?:\s+list)?)\b/i);
-  if (myList) body = myList[1].trim();
+  // Strip "add ... to (my|jax's|...) list" framing so the body is the bare task.
+  const listAdd = body.match(/^add\s+(.+?)\s+to\s+(?:my|the|\w+(?:'s)?)\s+(?:list|todos?|to[- ]?do(?:\s+list)?|chores?(?:\s+list)?)\b/i);
+  if (listAdd) body = listAdd[1].trim();
   // "Remind me to ..." → bare action.
   const remindMe = body.match(/^remind\s+me\s+to\s+(.+)/i);
   if (remindMe) body = remindMe[1].trim();
@@ -206,17 +215,18 @@ function rulesFallback(transcript: string, hint: Recipient | undefined): IntentR
   let kind: IntentKind = 'brain_dump';
   if (/\b(calendar|schedule|filter|show me|her day|his day|their day)\b/.test(t)) {
     kind = 'filter';
-  } else if (recipient && recipient !== 'shane' && /\b(add\s+\w+\s+to|chore|task|clean|laundry|dishes|trash|put away|fold|walk the dog)\b/.test(t)) {
-    kind = 'chore';
   } else if (recipient && recipient !== 'shane' && /\b(can you|please|would you|could you|need)\b/.test(t)) {
     kind = 'request';
+  } else if (
+    // Action-verb to-do for Shane (no other recipient).
+    /^(add|pick\s+up|grab|buy|call|email|book|schedule|order|finish|review|look\s+into|remind|don'?t\s+forget|remember\s+to)\b/i.test(body) ||
+    /\b(my\s+(?:to[- ]?do|todo|list))\b/i.test(t) ||
+    // Task with an explicit assignee.
+    (recipient && recipient !== 'shane' && /\b(add\s+\w+\s+to|chore|task|clean|laundry|dishes|trash|put away|fold|walk the dog)\b/.test(t))
+  ) {
+    kind = 'task';
   } else if (recipient && recipient !== 'shane') {
     kind = 'message';
-  } else if (
-    /^(add|pick\s+up|grab|buy|call|email|book|schedule|order|finish|review|look\s+into|remind|don'?t\s+forget|remember\s+to)\b/i.test(body) ||
-    /\b(my\s+(?:to[- ]?do|todo|list))\b/i.test(t)
-  ) {
-    kind = 'todo';
   }
 
   const cleaned = body.charAt(0).toUpperCase() + body.slice(1);

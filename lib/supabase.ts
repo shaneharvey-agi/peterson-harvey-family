@@ -94,3 +94,14 @@ export interface MemoryRow {
   source: string
   created_at: string
 }
+
+export interface TaskRow {
+  id: number
+  assignee: string
+  title: string
+  due_date: string | null
+  done_at: string | null
+  notes: string | null
+  created_by: string | null
+  created_at: string
+}

@@ -2,33 +2,32 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { fetchChores, type Chore } from '@/lib/queries/chores';
-import { addChore, completeChore } from '@/lib/mutations/chores';
+import {
+  fetchTasks,
+  taskListLabel,
+  type Task,
+} from '@/lib/queries/tasks';
+import { addTask, completeTask } from '@/lib/mutations/tasks';
 import {
   tokens,
   familyColor,
   type FamilyMember,
 } from '@/lib/design-tokens';
-import { FamilyFilterChips } from '@/components/chores/FamilyFilterChips';
+import { FamilyFilterChips } from '@/components/tasks/FamilyFilterChips';
 import { impact } from '@/lib/haptics';
 
-// Active "I" of the app — the family-aware default for /chores.
 const CURRENT_USER: FamilyMember = 'shane';
 
 function isFamilyMember(v: string | null): v is FamilyMember {
   return v === 'shane' || v === 'molly' || v === 'evey' || v === 'jax';
 }
 
-export default function ChoresPage() {
-  const [items, setItems] = useState<Chore[] | null>(null);
+export default function TasksPage() {
+  const [items, setItems] = useState<Task[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState<FamilyMember>(CURRENT_USER);
 
-  // Initial sync: read URL once for ?who=/?for= and ?add=, then load all
-  // chores. We fetch the full list a single time and derive each
-  // member's view via useMemo, so chip taps are pure client-side
-  // re-renders — no Supabase round-trip per switch.
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
@@ -45,7 +44,7 @@ export default function ChoresPage() {
     }
     let alive = true;
     (async () => {
-      const list = await fetchChores();
+      const list = await fetchTasks();
       if (alive) setItems(list);
     })();
     return () => {
@@ -63,30 +62,30 @@ export default function ChoresPage() {
   }
 
   const { open, done } = useMemo(() => {
-    const o: Chore[] = [];
-    const d: Chore[] = [];
-    for (const c of items ?? []) {
-      if (c.assignee !== activeFilter) continue;
-      (c.doneAt === null ? o : d).push(c);
+    const o: Task[] = [];
+    const d: Task[] = [];
+    for (const t of items ?? []) {
+      if (t.assignee !== activeFilter) continue;
+      (t.doneAt === null ? o : d).push(t);
     }
     return { open: o, done: d };
   }, [items, activeFilter]);
 
-  async function handleToggle(c: Chore) {
-    if (busy || c.doneAt !== null) return;
+  async function handleToggle(t: Task) {
+    if (busy || t.doneAt !== null) return;
     setBusy(true);
     const stamp = new Date().toISOString();
     setItems((prev) =>
-      prev ? prev.map((x) => (x.id === c.id ? { ...x, doneAt: stamp } : x)) : prev,
+      prev ? prev.map((x) => (x.id === t.id ? { ...x, doneAt: stamp } : x)) : prev,
     );
-    await completeChore(c.id);
+    await completeTask(t.id);
     setBusy(false);
   }
 
   async function handleAdd(input: { title: string; dueDate: string | null }) {
     if (busy) return;
     setBusy(true);
-    const res = await addChore({
+    const res = await addTask({
       assignee: activeFilter,
       title: input.title,
       dueDate: input.dueDate,
@@ -96,7 +95,7 @@ export default function ChoresPage() {
       setItems((prev) => (prev ? [res.data, ...prev] : [res.data]));
       setAddOpen(false);
     } else {
-      const local: Chore = {
+      const local: Task = {
         id: `local-${Date.now()}`,
         assignee: activeFilter,
         title: input.title.trim(),
@@ -113,6 +112,7 @@ export default function ChoresPage() {
   }
 
   const memberName = capitalize(activeFilter);
+  const label = taskListLabel(activeFilter);
 
   return (
     <main
@@ -122,7 +122,6 @@ export default function ChoresPage() {
         minHeight: '100dvh',
         background: tokens.bg,
         color: '#FFFFFF',
-        // Reserve space for the persistent BottomNav (mounted in app/layout.tsx).
         paddingBottom: 'calc(96px + env(safe-area-inset-bottom))',
       }}
     >
@@ -134,8 +133,6 @@ export default function ChoresPage() {
           background: 'rgba(7,9,15,0.92)',
           backdropFilter: 'blur(10px)',
           WebkitBackdropFilter: 'blur(10px)',
-          // Generous top padding past env(safe-area-inset-top) so the Back
-          // affordance lives clear of the Dynamic Island on every iPhone.
           paddingTop: `calc(14px + env(safe-area-inset-top))`,
           paddingBottom: 8,
         }}
@@ -149,11 +146,8 @@ export default function ChoresPage() {
             ← Back
           </Link>
           <span className="text-[11px] uppercase tracking-[1.5px] text-white/45">
-            Chores
+            {label.pluralUpper}
           </span>
-          {/* Right slot reserved for symmetry with Back; the primary
-              Add affordance lives in-content as a Liquid Glass tile so
-              it's in thumb-reach. */}
           <span aria-hidden style={{ width: 36 }} />
         </div>
         <div className="px-4">
@@ -163,15 +157,17 @@ export default function ChoresPage() {
 
       <div className="px-4 pb-24 pt-4 flex flex-col gap-3">
         {addOpen ? (
-          <AddChoreForm
+          <AddTaskForm
             onSubmit={handleAdd}
             onClose={() => setAddOpen(false)}
             busy={busy}
             assignee={activeFilter}
+            label={label}
           />
         ) : (
           <AddCta
             memberName={memberName}
+            label={label}
             onTap={() => setAddOpen(true)}
             prominent={items !== null && open.length === 0 && done.length === 0}
           />
@@ -189,16 +185,16 @@ export default function ChoresPage() {
                   Nothing open for {memberName}. Nice.
                 </div>
               ) : (
-                open.map((c) => (
-                  <ChoreRow key={c.id} chore={c} onToggle={() => handleToggle(c)} />
+                open.map((t) => (
+                  <TaskRow key={t.id} task={t} onToggle={() => handleToggle(t)} />
                 ))
               )}
             </Section>
 
             {done.length > 0 && (
               <Section label={`Done · ${done.length}`}>
-                {done.map((c) => (
-                  <ChoreRow key={c.id} chore={c} onToggle={() => {}} />
+                {done.map((t) => (
+                  <TaskRow key={t.id} task={t} onToggle={() => {}} />
                 ))}
               </Section>
             )}
@@ -213,14 +209,13 @@ export default function ChoresPage() {
 
 function AddCta({
   memberName,
+  label,
   onTap,
   prominent,
 }: {
   memberName: string;
+  label: ReturnType<typeof taskListLabel>;
   onTap: () => void;
-  /** When the list is empty, lift the tile vertically so it lands
-   *  near the middle of the viewport — that's where Shane wants the
-   *  primary affordance when there's open space. */
   prominent: boolean;
 }) {
   return (
@@ -249,10 +244,10 @@ function AddCta({
         WebkitTapHighlightColor: 'transparent',
         transition: 'padding 220ms cubic-bezier(0.22, 1, 0.36, 1), margin 220ms ease',
       }}
-      aria-label={`Add a chore for ${memberName}`}
+      aria-label={label.addCta(memberName)}
     >
       <PlusGlyph size={prominent ? 24 : 20} />
-      <span>Add for {memberName}</span>
+      <span>{label.addCta(memberName)}</span>
     </button>
   );
 }
@@ -277,16 +272,18 @@ function PlusGlyph({ size = 20 }: { size?: number }) {
   );
 }
 
-function AddChoreForm({
+function AddTaskForm({
   onSubmit,
   onClose,
   busy,
   assignee,
+  label,
 }: {
   onSubmit: (v: { title: string; dueDate: string | null }) => void;
   onClose: () => void;
   busy: boolean;
   assignee: FamilyMember;
+  label: ReturnType<typeof taskListLabel>;
 }) {
   const [title, setTitle] = useState('');
   const [due, setDue] = useState<'today' | 'tomorrow' | 'none'>('today');
@@ -322,7 +319,7 @@ function AddChoreForm({
           className="text-[10px] uppercase tracking-[1.2px]"
           style={{ color: familyColor(assignee), fontWeight: 700 }}
         >
-          Adding for {capitalize(assignee)}
+          {`Adding ${label.singular} for ${capitalize(assignee)}`}
         </div>
         <button
           type="button"
@@ -416,15 +413,15 @@ function AddChoreForm({
 
 /* ─────────── rows ─────────── */
 
-function ChoreRow({
-  chore,
+function TaskRow({
+  task,
   onToggle,
 }: {
-  chore: Chore;
+  task: Task;
   onToggle: () => void;
 }) {
-  const done = chore.doneAt !== null;
-  const accent = familyColor(chore.assignee);
+  const done = task.doneAt !== null;
+  const accent = familyColor(task.assignee);
 
   return (
     <div
@@ -438,7 +435,7 @@ function ChoreRow({
       <button
         type="button"
         onClick={onToggle}
-        aria-label={done ? 'Completed' : `Mark ${chore.title} done`}
+        aria-label={done ? 'Completed' : `Mark ${task.title} done`}
         aria-pressed={done}
         className="shrink-0 flex items-center justify-center"
         style={{
@@ -473,24 +470,24 @@ function ChoreRow({
               textDecoration: done ? 'line-through' : 'none',
             }}
           >
-            {chore.title}
+            {task.title}
           </div>
         </div>
         <div className="flex items-center gap-2 mt-0.5">
-          {chore.dueDate && (
+          {task.dueDate && (
             <span
               className="text-[11px]"
               style={{
-                color: dueColor(chore.dueDate, done),
+                color: dueColor(task.dueDate, done),
                 fontWeight: 600,
               }}
             >
-              {formatDue(chore.dueDate)}
+              {formatDue(task.dueDate)}
             </span>
           )}
-          {chore.notes && (
+          {task.notes && (
             <span className="text-[11px] text-white/50 truncate">
-              {chore.notes}
+              {task.notes}
             </span>
           )}
         </div>
