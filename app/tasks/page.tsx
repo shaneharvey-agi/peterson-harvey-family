@@ -145,7 +145,15 @@ export default function TasksPage() {
           >
             ← Back
           </Link>
-          <span className="text-[11px] uppercase tracking-[1.5px] text-white/45">
+          <span
+            className="wordmark uppercase"
+            style={{
+              fontSize: 14,
+              fontWeight: 800,
+              letterSpacing: '2px',
+              lineHeight: 1,
+            }}
+          >
             {label.pluralUpper}
           </span>
           <span aria-hidden style={{ width: 36 }} />
