@@ -55,3 +55,11 @@ export function impact(level: ImpactLevel = 'medium'): void {
 export function flutter(): void {
   vibrate([15, 55, 15, 55, 15]);
 }
+
+/**
+ * "Success" — light tap then heavy confirmation thunk. Fires alongside
+ * the 400ms gold-halo flash when an M Orb voice intent lands in Supabase.
+ */
+export function success(): void {
+  vibrate([10, 50, 22]);
+}

@@ -3,10 +3,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
-import { tokens } from '@/lib/design-tokens';
-import { flutter, impact } from '@/lib/haptics';
+import { tokens, type FamilyMember } from '@/lib/design-tokens';
+import { flutter, impact, success } from '@/lib/haptics';
 import { isSpeechSupported, startSpeech, type SpeechSession } from '@/lib/speech';
 import { sendMessage } from '@/lib/mutations/chatMessages';
+import { addChore } from '@/lib/mutations/chores';
+import { sendRequest } from '@/lib/mutations/requests';
+import { saveMemory } from '@/lib/mutations/memories';
 
 const HOLD_MS = 260;
 const WAVE_CYCLE_MS = 4000;
@@ -15,7 +18,7 @@ const BAR_HEIGHTS = [3, 6, 9, 5, 8, 4];
 const BAR_DELAYS = ['0s', '0.1s', '0.2s', '0.15s', '0.05s', '0.25s'];
 
 type Recipient = 'shane' | 'molly' | 'evey' | 'jax' | 'family';
-type IntentKind = 'request' | 'message' | 'chore' | 'filter';
+type IntentKind = 'message' | 'request' | 'chore' | 'brain_dump' | 'filter';
 
 interface IntentResponse {
   kind: IntentKind;
@@ -24,7 +27,21 @@ interface IntentResponse {
   source: 'haiku' | 'fallback';
 }
 
-const CURRENT_USER = 'shane';
+const CURRENT_USER: FamilyMember = 'shane';
+
+function pickAssignee(recipient: Recipient | undefined): FamilyMember | null {
+  // Chores need a real human assignee. "family" / unset → no assignee.
+  if (!recipient || recipient === 'family') return null;
+  return recipient;
+}
+
+function pickRequestTarget(
+  recipient: Recipient | undefined,
+): FamilyMember | null {
+  if (!recipient || recipient === 'family') return null;
+  if (recipient === CURRENT_USER) return null;
+  return recipient;
+}
 
 export function MOrb() {
   const router = useRouter();
@@ -102,12 +119,6 @@ export function MOrb() {
 
   const dispatchIntent = useCallback(
     async (captured: string) => {
-      // Confirm-and-fly: halo + medium impact fire on the same animation
-      // frame as the dispatch decision, so release feels like the message
-      // physically leaves the device.
-      setFlashKey((k) => k + 1);
-      impact('medium');
-
       let resolved: IntentResponse;
       try {
         const resp = await fetch('/api/intent', {
@@ -126,25 +137,80 @@ export function MOrb() {
       const { kind, content, recipient } = resolved;
       const body = (content || captured).trim();
 
-      // Message intent with a named recipient → write to chat_messages and
-      // navigate to the thread immediately. Twilio fan-out is deferred per
-      // Lean MVP; cross-device delivery rides on Supabase Realtime instead.
-      if (kind === 'message' && recipient && recipient !== CURRENT_USER) {
-        router.push(`/messages/${recipient}`);
-        sendMessage({
-          threadKey: recipient,
-          sender: CURRENT_USER,
-          body,
-        }).catch(() => {
-          /* Supabase write failed — message thread page will reflect on next fetch */
-        });
-        return;
-      }
+      // Confirmation: gold halo + success haptic, fired only when a write
+      // actually lands so Shane feels the action take.
+      const confirm = () => {
+        setFlashKey((k) => k + 1);
+        success();
+      };
 
-      // Other kinds fall back to the Mikayla chat with the transcript
-      // pre-filled so Shane can finish what he meant in chat. Eventually
-      // chore/filter/request will route to their own surfaces.
-      router.push(`/chat/mikayla?prefill=${encodeURIComponent(body)}`);
+      // Catch-all when a write never happens or fails — drop the user into
+      // the Mikayla chat with the transcript pre-filled so words aren't lost.
+      const fallbackToChat = () => {
+        router.push(`/chat/mikayla?prefill=${encodeURIComponent(body)}`);
+      };
+
+      switch (kind) {
+        case 'message': {
+          const target = pickRequestTarget(recipient);
+          if (!target) return fallbackToChat();
+          // Optimistic nav — the thread page refetches on mount, so the
+          // new message lands as the route transitions.
+          router.push(`/messages/${target}`);
+          const result = await sendMessage({
+            threadKey: target,
+            sender: CURRENT_USER,
+            body,
+          });
+          if (result.ok) confirm();
+          return;
+        }
+        case 'chore': {
+          const assignee = pickAssignee(recipient);
+          if (!assignee) return fallbackToChat();
+          const result = await addChore({
+            assignee,
+            title: body,
+            dueDate: null,
+            createdBy: CURRENT_USER,
+          });
+          if (result.ok) confirm();
+          else fallbackToChat();
+          return;
+        }
+        case 'request': {
+          const target = pickRequestTarget(recipient);
+          // No clear recipient → it's a thought, not a directed ask.
+          if (!target) {
+            const memo = await saveMemory({ author: CURRENT_USER, content: body });
+            if (memo.ok) confirm();
+            else fallbackToChat();
+            return;
+          }
+          const result = await sendRequest({
+            fromId: CURRENT_USER,
+            toId: target,
+            content: body,
+          });
+          if (result.ok) confirm();
+          else fallbackToChat();
+          return;
+        }
+        case 'brain_dump': {
+          const result = await saveMemory({ author: CURRENT_USER, content: body });
+          if (result.ok) confirm();
+          else fallbackToChat();
+          return;
+        }
+        case 'filter':
+        default: {
+          // Filter UI not yet wired to a destination route — drop into chat
+          // so Shane can finish the thought. Avoids a halo confirm because
+          // nothing was actually written.
+          fallbackToChat();
+          return;
+        }
+      }
     },
     [router],
   );

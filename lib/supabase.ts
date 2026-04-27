@@ -86,3 +86,11 @@ export interface ChatMessageRow {
   read_at: string | null
   created_at: string
 }
+
+export interface MemoryRow {
+  id: number
+  author: string
+  content: string
+  source: string
+  created_at: string
+}
