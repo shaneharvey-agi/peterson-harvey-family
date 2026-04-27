@@ -140,7 +140,11 @@ function LivingSignature() {
   const M_X = 18;
   const M_Y = (H - M_SIZE) / 2;
   const WORD_X = M_X + M_SIZE + 8;
-  const WORD_Y = M_Y + M_SIZE - 7;
+  // Matches the home-screen brand cluster: cap-top of "ikayla" aligns
+  // with the M's cap-top inside the gold square (the same flex-start +
+  // marginTop:4 trick the TopStrip uses, just expressed via baseline
+  // here since the wordmark is rendered as SVG <text>).
+  const WORD_Y = M_Y + Math.round(M_SIZE * 0.74);
   const M_FONT = Math.round(M_SIZE * 0.62);
   const WORD_FONT = 50;
   const RX = Math.round(M_SIZE * 0.22);
@@ -281,7 +285,7 @@ function LivingSignature() {
           fontFamily="'Helvetica Neue', sans-serif"
           fontSize={WORD_FONT}
           fontWeight={800}
-          letterSpacing="-0.4"
+          letterSpacing="0.6"
           fill={tokens.gold}
         >
           ikayla
