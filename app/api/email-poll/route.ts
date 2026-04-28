@@ -5,6 +5,11 @@ import {
   matchesPriority,
   type EmailMessage,
 } from '@/lib/services/email';
+import {
+  summarizeEmail,
+  cleanFromAddress,
+  type EmailSummary,
+} from '@/lib/services/email/summarize';
 
 /**
  * Email Intelligence Bridge — poll endpoint.
@@ -14,25 +19,28 @@ import {
  * Pipeline:
  *   1. Provider yields recent priority emails (Care / Instructions / Shane).
  *   2. Each is deduped against `processed_emails`.
- *   3. New ones are summarized via Haiku → /api/email-summary semantics
- *      (called inline here; same prompt logic).
- *   4. Each summary is written as a `notifications` row (kind=email_alert).
- *   5. Email id is recorded in `processed_emails` so future polls skip it.
+ *   3. New ones are summarized via the shared Haiku summarizer.
+ *      Marketing/newsletter/promo content is dropped (worthAlerting=false)
+ *      but still recorded in the dedupe ledger so we don't re-classify
+ *      the same junk on every poll.
+ *   4. Surviving summaries are written as `notifications` rows
+ *      (kind=email_alert).
  *
- * Returns: { processed, written, skipped, errors, provider }
+ * Returns: { processed, written, dropped, skipped, errors, provider }
  *
  * Trigger paths:
  *   - Manual: "Sync inbox" button on /notifications.
- *   - Future: Vercel cron (vercel.json) on a 5–15 min cadence.
+ *   - Future: Vercel cron on a 5–15 min cadence.
  */
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 interface PollResult {
-  processed: number;
-  written: number;
-  skipped: number;
+  processed: number; // total priority emails this run pulled in
+  written: number;   // summaries that became notifications
+  dropped: number;   // worthAlerting=false; ledgered, no notification
+  skipped: number;   // already in dedupe ledger from a prior poll
   errors: string[];
   provider: string;
 }
@@ -51,6 +59,7 @@ async function runPoll(): Promise<PollResult> {
   const result: PollResult = {
     processed: 0,
     written: 0,
+    dropped: 0,
     skipped: 0,
     errors: [],
     provider: provider.name,
@@ -81,6 +90,12 @@ async function runPoll(): Promise<PollResult> {
     }
     try {
       const summary = await summarizeEmail(msg);
+      if (!summary) {
+        // Marketing/newsletter/etc. Ledger it so we don't re-Haiku next poll.
+        await recordProcessed(msg, null);
+        result.dropped += 1;
+        continue;
+      }
       const notifId = await writeNotification(msg, summary);
       await recordProcessed(msg, notifId);
       result.written += 1;
@@ -111,13 +126,6 @@ async function alreadyProcessedIds(ids: string[]): Promise<Set<string>> {
   }
 }
 
-interface EmailSummary {
-  title: string;
-  body?: string;
-  severity: 'info' | 'warning' | 'urgent';
-  actionLabel?: string;
-}
-
 async function writeNotification(
   msg: EmailMessage,
   summary: EmailSummary,
@@ -126,7 +134,7 @@ async function writeNotification(
     kind: 'email_alert',
     severity: summary.severity,
     title: summary.title,
-    body: summary.body ?? `From: ${cleanFrom(msg.from)}`,
+    body: summary.body ?? `From: ${cleanFromAddress(msg.from)}`,
     action_label: summary.actionLabel ?? null,
     action_url: null, // No tap-through until Gmail UI exists.
     created_at: msg.receivedAt,
@@ -143,145 +151,11 @@ async function writeNotification(
 async function recordProcessed(msg: EmailMessage, notifId: number | null) {
   const { error } = await supabase.from('processed_emails').insert({
     id: msg.id,
-    from_addr: cleanFrom(msg.from),
+    from_addr: cleanFromAddress(msg.from),
     subject: msg.subject,
     notification_id: notifId,
   });
   if (error) throw error;
-}
-
-/* ─────────── Haiku summarizer (inline) ─────────── */
-
-const SYSTEM_PROMPT = [
-  'You are a personal-assistant filter for the household owner Shane.',
-  'You will receive ONE email (sender, subject, body) and must summarize',
-  'it into a single Actionable Alert that fits in a notification card.',
-  'Return strict JSON only — no prose, no markdown, no code fences.',
-  'Shape: {"title":"...","body":"...","severity":"...","actionLabel":"..."}',
-  '',
-  'title: ONE sentence, max ~90 chars. Lead with a 1-2 word category prefix',
-  '       followed by ": ". Pick the prefix from the email\'s nature:',
-  '         "Care Alert"        — care/maintenance/cleaning instructions',
-  '         "Action Needed"     — something Shane must decide or do',
-  '         "Schedule"          — date/time logistics (school, appts, deliveries)',
-  '         "Pickup"            — something is ready to collect',
-  '         "Heads Up"          — informational, no action required',
-  '       Then give the SPECIFIC actionable distillation, not a paraphrase of',
-  '       the subject. Examples:',
-  '         "Care Alert: Hand wash sweater, lay flat to dry."',
-  '         "Schedule: Friday early dismissal — pick up kids by 12:20."',
-  '         "Pickup: Walgreens Rx ready — pickup window closes Sunday 9pm."',
-  '         "Action Needed: Contractor needs sign-off on pendant swap + Subzero install Thurs 9–11a."',
-  '',
-  'body: optional 1-liner with sender or context. Keep <70 chars. Empty string if redundant.',
-  '',
-  'severity:',
-  '  - "urgent"  if it\'s time-sensitive (within 24h) AND requires Shane to act.',
-  '  - "warning" if action is needed but not immediate (this week).',
-  '  - "info"    if it\'s reference info / care instructions / FYI.',
-  '',
-  'actionLabel: short verb CTA, max 14 chars. e.g. "Read email", "Open thread", "Reply".',
-  '             Use "Read email" by default.',
-].join('\n');
-
-async function summarizeEmail(msg: EmailMessage): Promise<EmailSummary> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return rulesFallback(msg);
-
-  try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 280,
-        system: SYSTEM_PROMPT,
-        messages: [
-          {
-            role: 'user',
-            content: `From: ${msg.from}\nSubject: ${msg.subject}\n\n${msg.body}`,
-          },
-        ],
-      }),
-    });
-    if (!resp.ok) throw new Error(`Haiku ${resp.status}`);
-    const data: any = await resp.json();
-    const text = data?.content?.[0]?.text ?? '';
-    const parsed = parseHaikuJSON(text);
-    return parsed ?? rulesFallback(msg);
-  } catch (e) {
-    console.warn('[api/email-poll] Haiku failed, using fallback:', e);
-    return rulesFallback(msg);
-  }
-}
-
-function parseHaikuJSON(text: string): EmailSummary | null {
-  const cleaned = text
-    .replace(/^```(?:json)?\s*/i, '')
-    .replace(/\s*```$/i, '')
-    .trim();
-  try {
-    const obj = JSON.parse(cleaned);
-    const title = typeof obj?.title === 'string' ? obj.title.trim() : '';
-    if (!title) return null;
-    return {
-      title,
-      body: typeof obj?.body === 'string' && obj.body.trim() ? obj.body.trim() : undefined,
-      severity: normalizeSeverity(obj?.severity),
-      actionLabel:
-        typeof obj?.actionLabel === 'string' && obj.actionLabel.trim()
-          ? obj.actionLabel.trim().slice(0, 14)
-          : 'Read email',
-    };
-  } catch {
-    return null;
-  }
-}
-
-function normalizeSeverity(raw: unknown): 'info' | 'warning' | 'urgent' {
-  const s = String(raw || '').toLowerCase().trim();
-  if (s === 'urgent' || s === 'warning' || s === 'info') return s;
-  return 'info';
-}
-
-function rulesFallback(msg: EmailMessage): EmailSummary {
-  const text = `${msg.subject} ${msg.body}`.toLowerCase();
-  let prefix = 'Heads Up';
-  let severity: 'info' | 'warning' | 'urgent' = 'info';
-
-  if (/\b(care|wash|dry|clean|store|maintain|fabric)\b/.test(text)) {
-    prefix = 'Care Alert';
-  } else if (/\b(pickup|ready|prescription|rx)\b/.test(text)) {
-    prefix = 'Pickup';
-    severity = 'warning';
-  } else if (/\b(dismissal|appointment|schedule|delivery|arrives|tomorrow|today|tonight)\b/.test(text)) {
-    prefix = 'Schedule';
-    severity = 'warning';
-  } else if (/\b(sign[- ]off|approve|need(s)? you|review|decide|confirm|action)\b/.test(text)) {
-    prefix = 'Action Needed';
-    severity = 'warning';
-  }
-
-  const firstSentence = (msg.body.split(/(?<=[.!?])\s/)[0] ?? msg.subject).trim();
-  const distilled = firstSentence.length > 90 ? firstSentence.slice(0, 87) + '…' : firstSentence;
-  return {
-    title: `${prefix}: ${distilled}`,
-    body: `From: ${cleanFrom(msg.from)}`,
-    severity,
-    actionLabel: 'Read email',
-  };
-}
-
-/* ─────────── misc ─────────── */
-
-function cleanFrom(from: string): string {
-  // "Name <addr@x>" → "Name"; bare addr → addr
-  const angled = from.match(/^(.+?)\s*<[^>]+>$/);
-  return (angled?.[1] ?? from).trim();
 }
 
 function humanize(e: unknown): string {

@@ -85,10 +85,12 @@ async function getAccessToken(): Promise<string> {
 
 function buildQuery(sinceISO?: string): string {
   // Gmail search syntax: parenthesized OR over keywords, then newer_than.
-  // newer_than supports d (days), h (hours). We default to 1d and let the
-  // dedupe ledger do the heavier lifting.
+  // category:primary leans on Gmail's own promotions/social/updates
+  // filtering — the priority keywords (esp. "Shane") match every
+  // marketing email otherwise. Belt-and-suspenders explicit excludes
+  // for users who've turned off tabbed inbox.
   const kw = PRIORITY_KEYWORDS.map((k) => `"${k}"`).join(' OR ');
-  let q = `(${kw})`;
+  let q = `(${kw}) category:primary -category:promotions -category:social -category:updates -category:forums`;
   if (sinceISO) {
     const ageMs = Date.now() - Date.parse(sinceISO);
     const days = Math.max(1, Math.ceil(ageMs / 86_400_000));
