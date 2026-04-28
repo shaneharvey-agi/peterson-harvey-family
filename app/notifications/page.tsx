@@ -87,7 +87,15 @@ export default function NotificationsPage() {
           : prev,
       );
     }
-    if (n.actionUrl) router.push(n.actionUrl);
+    if (!n.actionUrl) return;
+    // External URLs (Gmail thread links from email_alert) open in a new
+    // tab so we don't navigate away from the app. Internal routes use
+    // the Next router.
+    if (/^https?:\/\//.test(n.actionUrl)) {
+      window.open(n.actionUrl, '_blank', 'noopener,noreferrer');
+    } else {
+      router.push(n.actionUrl);
+    }
   }
 
   async function handleDismiss(n: Notification) {

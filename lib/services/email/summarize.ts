@@ -52,6 +52,14 @@ const SYSTEM_PROMPT = [
   'When uncertain, prefer FALSE. Shane will see real Gmail anyway —',
   'these alerts are for things that actually need his hands or mind today.',
   '',
+  'EXCEPTION — strong actionable signals override the FALSE bias:',
+  'If the subject contains any of these phrases, set worthAlerting=true even',
+  'if the body looks template-y or marketing-ish:',
+  '  "please reply", "please respond", "please confirm", "RSVP",',
+  '  "action required", "response required", "needs your reply",',
+  '  "time-sensitive", "awaiting your"',
+  'A real person is waiting on Shane in those cases.',
+  '',
   'When worthAlerting is FALSE, set title="" body="" actionLabel="" severity="info".',
   '',
   '== title (only when worthAlerting=true) ==',
@@ -335,10 +343,43 @@ function looksLikeMarketing(text: string): boolean {
   return MARKETING_HINTS.some((h) => t.includes(h));
 }
 
+/**
+ * Strong actionable signals — when present in the SUBJECT (preferred)
+ * or anywhere in the email, override marketing/template heuristics
+ * because a real person is waiting on Shane.
+ */
+const STRONG_ACTIONABLE = [
+  'please reply',
+  'please respond',
+  'please confirm',
+  'pls reply',
+  'pls confirm',
+  'rsvp',
+  'action required',
+  'response required',
+  'response needed',
+  'needs your reply',
+  'awaiting your',
+  'time-sensitive',
+  'time sensitive',
+];
+
+function hasStrongActionableSignal(subject: string, body: string): boolean {
+  const s = subject.toLowerCase();
+  if (STRONG_ACTIONABLE.some((p) => s.includes(p))) return true;
+  // Body matches are weaker — only count the first 500 chars to avoid
+  // marketing footers that legally include "please reply" in fine print.
+  const bodyHead = body.slice(0, 500).toLowerCase();
+  return STRONG_ACTIONABLE.some((p) => bodyHead.includes(p));
+}
+
 function rulesFallback(msg: SummarizableEmail): EmailSummary | null {
   const cleanedBody = stripForwardingHeader(msg.body);
   const haystack = `${msg.subject}\n${cleanedBody}`;
-  if (looksLikeMarketing(haystack)) return null;
+  // Strong actionable signals (please reply / RSVP / etc.) override the
+  // marketing veto — a real human is waiting on Shane.
+  const overrideMarketing = hasStrongActionableSignal(msg.subject, cleanedBody);
+  if (!overrideMarketing && looksLikeMarketing(haystack)) return null;
 
   const text = haystack.toLowerCase();
   let prefix = 'Heads Up';
@@ -353,6 +394,11 @@ function rulesFallback(msg: SummarizableEmail): EmailSummary | null {
     prefix = 'Schedule';
     severity = 'warning';
   } else if (/\b(sign[- ]off|approve|need(s)? you|review|decide|action|please reply|reply)\b/.test(text)) {
+    prefix = 'Action Needed';
+    severity = 'warning';
+  }
+  // Strong signals upgrade severity and force the Action Needed prefix.
+  if (overrideMarketing) {
     prefix = 'Action Needed';
     severity = 'warning';
   }

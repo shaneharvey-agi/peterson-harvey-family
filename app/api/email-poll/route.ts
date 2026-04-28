@@ -96,7 +96,7 @@ async function runPoll(): Promise<PollResult> {
         result.dropped += 1;
         continue;
       }
-      const notifId = await writeNotification(msg, summary);
+      const notifId = await writeNotification(msg, summary, provider.name);
       await recordProcessed(msg, notifId);
       result.written += 1;
     } catch (e) {
@@ -129,14 +129,23 @@ async function alreadyProcessedIds(ids: string[]): Promise<Set<string>> {
 async function writeNotification(
   msg: EmailMessage,
   summary: EmailSummary,
+  providerName: string,
 ): Promise<number | null> {
+  // Gmail message ids work in Gmail's web URL fragment — both message
+  // and thread ids resolve to the thread view. Lets the user tap a card
+  // and land directly in the conversation. Mock provider has no real
+  // Gmail thread, so we leave the link blank.
+  const actionUrl =
+    providerName === 'gmail'
+      ? `https://mail.google.com/mail/u/0/#inbox/${msg.id}`
+      : null;
   const row = {
     kind: 'email_alert',
     severity: summary.severity,
     title: summary.title,
     body: summary.body ?? `From: ${cleanFromAddress(msg.from)}`,
     action_label: summary.actionLabel ?? null,
-    action_url: null, // No tap-through until Gmail UI exists.
+    action_url: actionUrl,
     created_at: msg.receivedAt,
   };
   const { data, error } = await supabase
