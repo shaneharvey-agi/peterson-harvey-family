@@ -5,6 +5,7 @@ export type NotificationKind =
   | 'stale_todo'     // Old uncompleted task
   | 'dinner_missing' // Upcoming day with no dinner plan
   | 'reminder'       // Time-based nudge
+  | 'email_alert'    // Email Intelligence Bridge → Haiku summary
   | 'info';          // Generic passthrough
 
 export type NotificationSeverity = 'info' | 'warning' | 'urgent';
@@ -73,5 +74,14 @@ export const mockNotifications: Notification[] = [
     body: 'Moved her 2pm to 3pm Thursday per her message.',
     createdAt: hoursAgo(8),
     readAt: hoursAgo(8),
+  },
+  {
+    id: 'mock-n6',
+    kind: 'email_alert',
+    severity: 'info',
+    title: 'Care Alert: Hand wash sweater, lay flat to dry.',
+    body: 'From: Naadam',
+    createdAt: minsAgo(35),
+    readAt: null,
   },
 ];

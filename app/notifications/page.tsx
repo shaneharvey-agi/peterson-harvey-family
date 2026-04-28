@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import {
   fetchNotifications,
   type Notification,
+  type NotificationKind,
   type NotificationSeverity,
 } from '@/lib/queries/notifications';
 import {
@@ -19,6 +20,8 @@ export default function NotificationsPage() {
   const router = useRouter();
   const [items, setItems] = useState<Notification[] | null>(null);
   const [busy, setBusy] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncToast, setSyncToast] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -30,6 +33,31 @@ export default function NotificationsPage() {
       alive = false;
     };
   }, []);
+
+  async function handleSyncInbox() {
+    if (syncing) return;
+    setSyncing(true);
+    setSyncToast(null);
+    try {
+      const resp = await fetch('/api/email-poll', { method: 'POST' });
+      const json = await resp.json();
+      const written = Number(json?.written ?? 0);
+      setSyncToast(
+        written > 0
+          ? `+${written} new ${written === 1 ? 'alert' : 'alerts'}`
+          : 'Inbox is clear',
+      );
+      if (written > 0) {
+        const list = await fetchNotifications();
+        setItems(list);
+      }
+    } catch (e) {
+      setSyncToast('Sync failed');
+    } finally {
+      setSyncing(false);
+      setTimeout(() => setSyncToast(null), 2200);
+    }
+  }
 
   const unreadCount = items?.filter((n) => n.readAt === null).length ?? 0;
 
@@ -122,6 +150,40 @@ export default function NotificationsPage() {
         </div>
         <button
           type="button"
+          onClick={handleSyncInbox}
+          disabled={syncing}
+          className="text-[11px] font-semibold shrink-0 flex items-center gap-1.5"
+          aria-label="Sync inbox"
+          style={{
+            color: syncing ? 'rgba(255,255,255,0.35)' : tokens.gold,
+            padding: '6px 10px',
+            background: 'transparent',
+            border: 'none',
+            letterSpacing: '0.2px',
+          }}
+        >
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden
+            style={{
+              animation: syncing ? 'sync-spin 900ms linear infinite' : 'none',
+            }}
+          >
+            <path
+              d="M3 12a9 9 0 0 1 15.5-6.3M21 12a9 9 0 0 1-15.5 6.3M21 4v5h-5M3 20v-5h5"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          {syncing ? 'Syncing' : 'Sync'}
+        </button>
+        <button
+          type="button"
           onClick={handleMarkAllRead}
           disabled={busy || unreadCount === 0}
           className="text-[11px] font-semibold shrink-0"
@@ -136,6 +198,30 @@ export default function NotificationsPage() {
           Mark all
         </button>
       </header>
+      {syncToast && (
+        <div
+          className="fixed left-1/2 -translate-x-1/2 z-20 text-[12px] font-semibold"
+          style={{
+            top: 'calc(env(safe-area-inset-top) + 64px)',
+            padding: '8px 14px',
+            borderRadius: 999,
+            background: 'rgba(15, 31, 56, 0.85)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+            border: `1px solid ${tokens.goldBorder}`,
+            color: tokens.gold,
+            boxShadow: '0 0 14px 2px rgba(196, 160, 80, 0.18)',
+          }}
+        >
+          {syncToast}
+        </div>
+      )}
+      <style>{`
+        @keyframes sync-spin {
+          from { transform: rotate(0deg); }
+          to   { transform: rotate(360deg); }
+        }
+      `}</style>
 
       <div className="px-4 pb-24 pt-3 flex flex-col gap-2.5">
         {items === null ? (
@@ -169,7 +255,11 @@ function NotificationCard({
   onDismiss: () => void;
 }) {
   const unread = notif.readAt === null;
-  const accent = severityColor(notif.severity);
+  // Email alerts always read as gold so the inbox-sourced cards are
+  // visually distinct from Mikayla's own observations regardless of
+  // their severity classification.
+  const accent =
+    notif.kind === 'email_alert' ? tokens.goldBorder : severityColor(notif.severity);
 
   // Executive Shell tile: deep navy frosted glass, gold hairline, 18px
   // radius, soft gold glow on unread (matches user-bubble physics).
@@ -180,7 +270,7 @@ function NotificationCard({
       className="relative"
       style={{
         background: unread ? 'rgba(15, 31, 56, 0.55)' : 'rgba(255, 255, 255, 0.04)',
-        border: `0.5px solid ${tokens.gold}`,
+        border: `1px solid ${tokens.goldBorder}`,
         backdropFilter: 'blur(35px) saturate(1.1)',
         WebkitBackdropFilter: 'blur(35px) saturate(1.1)',
         borderRadius: 18,
@@ -216,7 +306,7 @@ function NotificationCard({
         }}
       >
         <div className="flex items-start gap-2.5">
-          <SeverityIcon severity={notif.severity} />
+          <KindIcon kind={notif.kind} severity={notif.severity} />
           <div className="flex-1 min-w-0" style={{ paddingRight: 18 }}>
             <div className="flex items-baseline justify-between gap-2">
               <div
@@ -255,7 +345,7 @@ function NotificationCard({
                   padding: '4px 10px',
                   borderRadius: 999,
                   background: 'rgba(7, 9, 15, 0.55)',
-                  border: `0.5px solid ${tokens.gold}`,
+                  border: `1px solid ${tokens.goldBorder}`,
                   color: tokens.gold,
                   fontSize: 11,
                   fontWeight: 700,
@@ -305,7 +395,7 @@ function EmptyState() {
           width: 44,
           height: 44,
           borderRadius: '50%',
-          border: `0.5px solid ${tokens.gold}`,
+          border: `1px solid ${tokens.goldBorder}`,
           background: 'rgba(15, 31, 56, 0.55)',
           backdropFilter: 'blur(35px) saturate(1.1)',
           WebkitBackdropFilter: 'blur(35px) saturate(1.1)',
@@ -343,7 +433,52 @@ function EmptyState() {
 
 /* ─────────── helpers ─────────── */
 
-function SeverityIcon({ severity }: { severity: NotificationSeverity }) {
+function KindIcon({
+  kind,
+  severity,
+}: {
+  kind: NotificationKind;
+  severity: NotificationSeverity;
+}) {
+  // Email alerts get an envelope on a gold-on-navy disc — distinguishes
+  // inbox-sourced cards from Mikayla's own observations at a glance.
+  if (kind === 'email_alert') {
+    return (
+      <span
+        aria-hidden
+        className="flex items-center justify-center shrink-0"
+        style={{
+          width: 22,
+          height: 22,
+          borderRadius: '50%',
+          background: 'rgba(15, 31, 56, 0.85)',
+          border: `1px solid ${tokens.goldBorder}`,
+          color: tokens.gold,
+          lineHeight: 1,
+        }}
+      >
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden>
+          <rect
+            x="3"
+            y="5"
+            width="18"
+            height="14"
+            rx="2.5"
+            stroke="currentColor"
+            strokeWidth="1.8"
+          />
+          <path
+            d="M3.5 7.5l8.5 6 8.5-6"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </span>
+    );
+  }
+
   const color = severityColor(severity);
   return (
     <span
@@ -354,7 +489,7 @@ function SeverityIcon({ severity }: { severity: NotificationSeverity }) {
         height: 22,
         borderRadius: '50%',
         background: `${color}26`,
-        border: `0.5px solid ${color}88`,
+        border: `1px solid ${color}88`,
         color,
         fontSize: 12,
         fontWeight: 800,
