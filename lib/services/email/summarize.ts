@@ -67,11 +67,22 @@ const SYSTEM_PROMPT = [
   '  - NO empty placeholders ("...", "TBD", "(see link)")',
   '',
   'Distill the SPECIFIC thing — not a paraphrase of the subject line.',
-  'Examples of good titles:',
+  'If the email is FORWARDED (subject starts "Fwd:" or body has',
+  '"Forwarded message" header), summarize what the FORWARDED CONTENT is asking,',
+  'NOT the forwarder or the forwarding metadata.',
+  '',
+  'Examples of GOOD titles:',
   '  "Care Alert: Hand wash sweater, lay flat to dry."',
   '  "Schedule: Friday early dismissal — pick up kids by 12:20."',
   '  "Pickup: Walgreens Rx ready — pickup window closes Sunday 9pm."',
+  '  "Action Needed: Reply to confirm Jaxon\'s dental appointment Thursday."',
   '  "Action Needed: Contractor needs sign-off on pendant swap by Thursday."',
+  '',
+  'Examples of BAD titles (never produce these):',
+  '  "Care Alert: Forwarded message --------- From: ..."  ← header text, not content',
+  '  "Action Needed: The previous email was sent at 11:55"  ← meta-text, not the ask',
+  '  "Heads Up: Hi Shane,"  ← greeting fragment',
+  '  "Care Alert: [Logo](https://...)"  ← contains markdown/URL',
   '',
   '== body ==',
   'Optional 1-liner with sender or context. Max 70 chars. No URLs. Empty if redundant.',
@@ -108,7 +119,7 @@ export async function summarizeEmail(
         messages: [
           {
             role: 'user',
-            content: `From: ${msg.from}\nSubject: ${msg.subject}\n\n${truncateForPrompt(msg.body)}`,
+            content: `From: ${msg.from}\nSubject: ${msg.subject}\n\n${truncateForPrompt(stripForwardingHeader(msg.body))}`,
           },
         ],
       }),
@@ -119,6 +130,9 @@ export async function summarizeEmail(
     const parsed = parseHaikuJSON(text);
     if (parsed === 'skip') return null;
     if (parsed) return { ...parsed, source: 'haiku' };
+    // Haiku returned something we couldn't parse — log it so we can
+    // diagnose, then fall back to the rules summarizer.
+    console.warn('[summarizeEmail] Haiku unparseable, raw response:', text.slice(0, 400));
     return rulesFallback(msg);
   } catch (e) {
     console.warn('[summarizeEmail] Haiku failed, using fallback:', e);
@@ -181,8 +195,30 @@ function sanitizeTitle(raw: unknown): string {
     .trim();
   // Strip stray punctuation left at the edges by URL/markdown removal.
   t = t.replace(/^[\s\-:.,;]+/, '').replace(/[\s\-:.,;]+$/, '');
+  if (looksLikeGarbageTitle(t)) return '';
   if (t.length > 90) t = t.slice(0, 87).trimEnd() + '…';
   return t;
+}
+
+/**
+ * Detects clearly-broken titles produced by either the model or the
+ * rules fallback when the email body started with template fragments
+ * (forwarding headers, email-client preamble, etc). Returning '' from
+ * sanitizeTitle then forces a drop instead of writing a junk alert.
+ */
+function looksLikeGarbageTitle(t: string): boolean {
+  const stripped = t.replace(/^(Care Alert|Action Needed|Schedule|Pickup|Heads Up):\s*/i, '');
+  if (!stripped) return true;
+  const low = stripped.toLowerCase();
+  if (low.startsWith('forwarded message')) return true;
+  if (low.startsWith('begin forwarded message')) return true;
+  if (low.startsWith('-----')) return true;
+  if (/^from:\s/i.test(stripped)) return true;
+  if (/\bnoreply@|\bno-reply@/i.test(stripped)) return true;
+  if (/\b\S+@\S+\.\S+/.test(stripped)) return true; // bare email address
+  if (/^the previous email/i.test(stripped)) return true;
+  if (/^on \w+,? \w+ \d/i.test(stripped)) return true; // "On Mon, Apr 28..."
+  return false;
 }
 
 function sanitizeBody(raw: unknown): string {
@@ -203,6 +239,28 @@ function truncateForPrompt(body: string): string {
   // tokens — first ~3000 chars is plenty for Haiku to classify.
   if (body.length <= 3000) return body;
   return body.slice(0, 3000) + '\n\n[…body truncated]';
+}
+
+/**
+ * Strips the standard "---------- Forwarded message ---------" header
+ * block (and Apple Mail's "Begin forwarded message:" variant) so the
+ * summarizer sees the real content first instead of From/Date/Subject/To
+ * metadata. Conservative — leaves the body alone if no header pattern matches.
+ */
+export function stripForwardingHeader(body: string): string {
+  if (!body) return body;
+  // Gmail-style: "---------- Forwarded message ---------" then a few
+  // header lines (From:/Date:/Subject:/To:), then a blank line, then content.
+  const gmailMatch = body.match(
+    /-{2,}\s*Forwarded message\s*-{2,}\s*\n(?:[^\n]*\n){0,8}?\n([\s\S]+)/i,
+  );
+  if (gmailMatch) return gmailMatch[1].trim();
+  // Apple Mail: "Begin forwarded message:\n\nFrom: ...\nSubject: ...\n\n<content>"
+  const appleMatch = body.match(
+    /Begin forwarded message:\s*\n(?:[^\n]*\n){0,8}?\n([\s\S]+)/i,
+  );
+  if (appleMatch) return appleMatch[1].trim();
+  return body;
 }
 
 export function cleanFromAddress(from: string): string {
@@ -237,7 +295,8 @@ function looksLikeMarketing(text: string): boolean {
 }
 
 function rulesFallback(msg: SummarizableEmail): EmailSummary | null {
-  const haystack = `${msg.subject}\n${msg.body}`;
+  const cleanedBody = stripForwardingHeader(msg.body);
+  const haystack = `${msg.subject}\n${cleanedBody}`;
   if (looksLikeMarketing(haystack)) return null;
 
   const text = haystack.toLowerCase();
@@ -257,10 +316,19 @@ function rulesFallback(msg: SummarizableEmail): EmailSummary | null {
     severity = 'warning';
   }
 
-  const firstSentence =
-    msg.body.split(/(?<=[.!?])\s/)[0] ?? msg.subject;
-  const distilled = sanitizeTitle(firstSentence);
-  if (!distilled) return null; // body was nothing but URLs/markdown
+  // Skip past template/header sentences ("On Mon Apr 28…", "From: …", etc.)
+  // until we find one that actually contains content. Cap the search.
+  const sentences = cleanedBody.split(/(?<=[.!?])\s/).slice(0, 6);
+  let distilled = '';
+  for (const s of sentences) {
+    const candidate = sanitizeTitle(s);
+    if (candidate) {
+      distilled = candidate;
+      break;
+    }
+  }
+  if (!distilled) distilled = sanitizeTitle(msg.subject);
+  if (!distilled) return null; // nothing usable left
 
   return {
     title: `${prefix}: ${distilled}`,
