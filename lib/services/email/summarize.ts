@@ -67,6 +67,10 @@ const SYSTEM_PROMPT = [
   '  - NO empty placeholders ("...", "TBD", "(see link)")',
   '',
   'Distill the SPECIFIC thing — not a paraphrase of the subject line.',
+  'PREFER the subject line as your title source — it is human-written and',
+  'signal-dense. Strip "Fwd:"/"Re:" prefixes. Only mine the body for detail',
+  'when the subject is too generic. NEVER produce a title from email-template',
+  'footer phrases ("View it in your browser", "Click here", legal disclaimers).',
   'If the email is FORWARDED (subject starts "Fwd:" or body has',
   '"Forwarded message" header), summarize what the FORWARDED CONTENT is asking,',
   'NOT the forwarder or the forwarding metadata.',
@@ -83,6 +87,8 @@ const SYSTEM_PROMPT = [
   '  "Action Needed: The previous email was sent at 11:55"  ← meta-text, not the ask',
   '  "Heads Up: Hi Shane,"  ← greeting fragment',
   '  "Care Alert: [Logo](https://...)"  ← contains markdown/URL',
+  '  "Care Alert: View it in your browser"  ← email-template footer phrase',
+  '  "Action Needed: 2510-2521 and is legally privileged"  ← legal disclaimer fragment',
   '',
   '== body ==',
   'Optional 1-liner with sender or context. Max 70 chars. No URLs. Empty if redundant.',
@@ -218,6 +224,11 @@ function looksLikeGarbageTitle(t: string): boolean {
   if (/\b\S+@\S+\.\S+/.test(stripped)) return true; // bare email address
   if (/^the previous email/i.test(stripped)) return true;
   if (/^on \w+,? \w+ \d/i.test(stripped)) return true; // "On Mon, Apr 28..."
+  if (looksLikeTemplatePhrase(stripped)) return true;
+  // Numeric-only fragments ("2510-2521", "1.2.3", line numbers).
+  if (/^[\d\s\-.,]+$/.test(stripped)) return true;
+  // Title is just a single common verb/noun fragment with no real info.
+  if (stripped.length < 12 && !/[?!.]/.test(stripped)) return true;
   return false;
 }
 
@@ -274,6 +285,10 @@ export function cleanFromAddress(from: string): string {
 const MARKETING_HINTS = [
   'unsubscribe',
   'view in browser',
+  'view it in your browser',
+  'view this email in your browser',
+  'trouble viewing',
+  'add us to your address book',
   '% off',
   '%off',
   'free shipping',
@@ -287,7 +302,33 @@ const MARKETING_HINTS = [
   'last chance',
   'flash sale',
   'this week only',
+  'manage your preferences',
+  'no longer wish to receive',
 ];
+
+/**
+ * Email-template / footer / legal phrases that frequently leak into
+ * the rules-fallback's "first sentence." Treat them as garbage so the
+ * fallback skips past them to the next sentence.
+ */
+const TEMPLATE_PHRASES = [
+  'view it in your browser',
+  'view this email in your browser',
+  'view in browser',
+  'trouble viewing',
+  'click here to',
+  'is legally privileged',
+  'confidential and may contain',
+  'this message is intended',
+  'please do not reply',
+  'add us to your',
+  'manage your preferences',
+];
+
+function looksLikeTemplatePhrase(s: string): boolean {
+  const low = s.toLowerCase();
+  return TEMPLATE_PHRASES.some((p) => low.includes(p));
+}
 
 function looksLikeMarketing(text: string): boolean {
   const t = text.toLowerCase();
@@ -308,26 +349,33 @@ function rulesFallback(msg: SummarizableEmail): EmailSummary | null {
   } else if (/\b(pickup|ready|prescription|rx)\b/.test(text)) {
     prefix = 'Pickup';
     severity = 'warning';
-  } else if (/\b(dismissal|appointment|schedule|delivery|arrives|tomorrow|today|tonight)\b/.test(text)) {
+  } else if (/\b(dismissal|appointment|schedule|delivery|arrives|tomorrow|today|tonight|confirm)\b/.test(text)) {
     prefix = 'Schedule';
     severity = 'warning';
-  } else if (/\b(sign[- ]off|approve|need(s)? you|review|decide|confirm|action)\b/.test(text)) {
+  } else if (/\b(sign[- ]off|approve|need(s)? you|review|decide|action|please reply|reply)\b/.test(text)) {
     prefix = 'Action Needed';
     severity = 'warning';
   }
 
-  // Skip past template/header sentences ("On Mon Apr 28…", "From: …", etc.)
-  // until we find one that actually contains content. Cap the search.
-  const sentences = cleanedBody.split(/(?<=[.!?])\s/).slice(0, 6);
-  let distilled = '';
-  for (const s of sentences) {
-    const candidate = sanitizeTitle(s);
-    if (candidate) {
-      distilled = candidate;
-      break;
+  // Subject is human-written and signal-dense — start there. Strip
+  // Fwd:/Re:/RE: prefixes that don't add meaning.
+  const cleanedSubject = msg.subject
+    .replace(/^(?:(?:fwd|fw|re|aw):\s*)+/i, '')
+    .trim();
+  let distilled = sanitizeTitle(cleanedSubject);
+
+  // If the subject is too thin or got rejected as garbage, walk the body
+  // looking for the first sentence that survives sanitization.
+  if (!distilled || distilled.length < 14) {
+    const sentences = cleanedBody.split(/(?<=[.!?])\s/).slice(0, 8);
+    for (const s of sentences) {
+      const candidate = sanitizeTitle(s);
+      if (candidate && candidate.length >= 14) {
+        distilled = candidate;
+        break;
+      }
     }
   }
-  if (!distilled) distilled = sanitizeTitle(msg.subject);
   if (!distilled) return null; // nothing usable left
 
   return {
