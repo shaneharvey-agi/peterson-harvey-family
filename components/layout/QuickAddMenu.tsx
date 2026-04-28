@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-const GLASS_GOLD = '#C5A059';
+const GLASS_GOLD = '#B8860B';
 const SPRING = 'cubic-bezier(0.34, 1.56, 0.64, 1)';
 
 type MenuItem = {
@@ -95,8 +95,8 @@ export function QuickAddMenu({
           background: 'rgba(10, 25, 47, 0.75)',
           backdropFilter: 'blur(35px) saturate(150%)',
           WebkitBackdropFilter: 'blur(35px) saturate(150%)',
-          borderLeft: `0.5px solid ${GLASS_GOLD}`,
-          borderBottom: `0.5px solid ${GLASS_GOLD}`,
+          borderLeft: `1px solid ${GLASS_GOLD}`,
+          borderBottom: `1px solid ${GLASS_GOLD}`,
           borderTopLeftRadius: 14,
           borderBottomLeftRadius: 14,
           padding: '6px 0',

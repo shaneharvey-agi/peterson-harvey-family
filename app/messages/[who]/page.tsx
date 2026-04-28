@@ -441,7 +441,7 @@ function Composer({
           background: 'rgba(7, 9, 15, 0.45)',
           backdropFilter: 'blur(35px) saturate(1.15)',
           WebkitBackdropFilter: 'blur(35px) saturate(1.15)',
-          border: '0.5px solid rgba(196, 160, 80, 0.55)',
+          border: '1px solid rgba(184, 134, 11, 0.65)',
           borderRadius: 999,
           padding: '6px 6px 6px 14px',
         }}

@@ -35,8 +35,8 @@ export function MMark({ size = 32, waving = false }: Props) {
         height,
         borderRadius: Math.round(height * 0.22),
         background: tokens.gold,
-        border: `0.5px solid ${tokens.gold}`,
-        boxShadow: `0 0 0 0.5px ${tokens.gold}, 0 1px 4px rgba(196,160,80,0.30)`,
+        border: `1px solid ${tokens.goldBorder}`,
+        boxShadow: `0 0 0 0.5px ${tokens.goldBorder}, 0 1px 4px rgba(196,160,80,0.30)`,
         flexShrink: 0,
       }}
     >

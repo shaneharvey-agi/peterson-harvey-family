@@ -354,7 +354,7 @@ export function MOrb() {
                   height: 200,
                   marginLeft: -100,
                   borderRadius: '50%',
-                  border: `0.5px solid ${tokens.gold}`,
+                  border: `1px solid ${tokens.goldBorder}`,
                   boxShadow: `0 0 24px ${tokens.gold}, 0 0 48px ${tokens.gold}66`,
                   animation: 'morb-halo-flash 400ms ease-out forwards',
                 }}

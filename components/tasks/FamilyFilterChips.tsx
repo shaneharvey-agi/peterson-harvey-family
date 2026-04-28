@@ -81,7 +81,7 @@ function FilterChip({
         background: active
           ? 'rgba(15, 31, 56, 0.55)'
           : 'rgba(255, 255, 255, 0.06)',
-        border: `0.5px solid ${tokens.gold}`,
+        border: `1px solid ${tokens.goldBorder}`,
         backdropFilter: 'blur(35px) saturate(1.1)',
         WebkitBackdropFilter: 'blur(35px) saturate(1.1)',
         boxShadow: active

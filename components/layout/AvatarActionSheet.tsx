@@ -246,7 +246,7 @@ function HeaderAvatar({ member }: { member: FamilyMember }) {
         height: 44,
         borderRadius: '50%',
         background: familyBg(member),
-        border: `0.5px solid ${tokens.gold}`,
+        border: `1px solid ${tokens.goldBorder}`,
         overflow: 'hidden',
         boxShadow: `0 0 12px rgba(196,160,80,0.22)`,
       }}

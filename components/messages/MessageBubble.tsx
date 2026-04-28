@@ -27,7 +27,7 @@ const SHARP = 6;
 const USER_BG = 'rgba(15, 31, 56, 0.55)';        // deep navy, partly translucent so 35px backdrop-blur reads as liquid glass
 const RECIPIENT_BG = 'rgba(255, 255, 255, 0.06)'; // frosted white/navy mix
 const USER_GLOW = '0 0 12px 2px rgba(196, 160, 80, 0.10)';
-const GOLD_BORDER = `0.5px solid ${tokens.gold}`;
+const GOLD_BORDER = `1px solid ${tokens.goldBorder}`;
 const BLUR = 'blur(35px) saturate(1.1)';
 
 /**

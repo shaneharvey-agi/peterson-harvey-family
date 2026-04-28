@@ -240,7 +240,7 @@ function AddCta({
         marginTop: prominent ? 'clamp(40px, 18vh, 140px)' : 0,
         borderRadius: 18,
         background: 'rgba(15, 31, 56, 0.55)',
-        border: `0.5px solid ${tokens.gold}`,
+        border: `1px solid ${tokens.goldBorder}`,
         backdropFilter: 'blur(35px) saturate(1.1)',
         WebkitBackdropFilter: 'blur(35px) saturate(1.1)',
         boxShadow: '0 0 12px 2px rgba(196, 160, 80, 0.10)',

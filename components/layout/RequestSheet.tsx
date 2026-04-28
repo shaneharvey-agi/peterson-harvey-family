@@ -107,7 +107,7 @@ export function RequestSheet({ member, fromMember, onClose, onSent, prefill }: R
           background: 'rgba(7, 9, 15, 0.55)',
           backdropFilter: 'blur(35px) saturate(1.15)',
           WebkitBackdropFilter: 'blur(35px) saturate(1.15)',
-          border: `0.5px solid ${tokens.gold}`,
+          border: `1px solid ${tokens.goldBorder}`,
           borderTopLeftRadius: 22,
           borderTopRightRadius: 22,
           paddingBottom: 'calc(16px + env(safe-area-inset-bottom))',
@@ -171,7 +171,7 @@ export function RequestSheet({ member, fromMember, onClose, onSent, prefill }: R
           <div
             style={{
               background: 'rgba(13, 17, 25, 0.6)',
-              border: `0.5px solid ${tokens.gold}`,
+              border: `1px solid ${tokens.goldBorder}`,
               borderRadius: 16,
               padding: 14,
               boxShadow: 'inset 0 0 18px rgba(196,160,80,0.05)',
@@ -261,7 +261,7 @@ export function RequestSheet({ member, fromMember, onClose, onSent, prefill }: R
           height: 44,
           borderRadius: '50%',
           background: familyBg(member),
-          border: `0.5px solid ${tokens.gold}`,
+          border: `1px solid ${tokens.goldBorder}`,
           overflow: 'hidden',
           boxShadow: `0 0 14px rgba(196,160,80,0.25)`,
         }}

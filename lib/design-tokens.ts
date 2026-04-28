@@ -3,6 +3,11 @@ export const tokens = {
   bg: '#07090F',
   gold: '#C4A050',
   goldGlow: 'rgba(196, 160, 80, 0.4)',
+  // Deep Gold — used for hairline borders. Heavier weight (1px) + lower
+  // luminance so the edge pops against navy frost without stealing focus
+  // from gold typography (which stays #C4A050).
+  goldBorder: '#B8860B',
+  goldBorderGlass: 'rgba(184, 134, 11, 0.65)',
   red: '#E24B4A',
 
   shane: '#378ADD',
