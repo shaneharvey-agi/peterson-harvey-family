@@ -1,6 +1,7 @@
 'use client';
 
 import { tokens } from '@/lib/design-tokens';
+import { M_MONOGRAM_PATH } from './MMonogram';
 
 interface Props {
   /** Outer height in px. Width = height * (32/34). Default 32. */
@@ -17,28 +18,39 @@ const BAR_DELAYS = ['0s', '0.1s', '0.2s', '0.15s', '0.05s', '0.25s'];
  * exact layered structure so every surface in the app reads as the same
  * asset: gold body, 3px-equivalent navy band (drawn as a border via
  * border-box), and a 1.5px-equivalent outer gold ring (drawn as a
- * box-shadow ring outside the navy band). The bold "M" sits on the gold
- * body and the waveform strip clips to the inner rounded corners. Visual
- * only — no hold gestures, no portals, no haptics. Pair with the
- * "ikayla" wordmark to compose the unified header logo.
+ * box-shadow ring outside the navy band). The architectural M monogram
+ * (path-based, never a text font) sits on the gold body with a small
+ * optical offset to compensate for the left-leaning visual weight of the
+ * waveform strip below. Pair with the "ikayla" wordmark for the unified
+ * header logo.
  */
 export function MMark({ size = 32, waving = false }: Props) {
-  // Square, like the bottom-nav orb.
   const height = size;
   const width = size;
   // Proportions taken from the live MOrb (56px square):
   //   border         3 / 56 = 5.36%   navy band drawn inside via border-box
   //   ring           1.5 / 56 = 2.68%  outer gold halo drawn via box-shadow
   //   strip height  14 / 56 = 25%      waveform footer
-  //   M font        26 / 56 = 46.4%    bold black glyph on the gold body
   //   radius        16 / 56 = 28.6%    soft squircle
   const borderW = Math.max(1, Math.round(size * 0.054));
   const ringW = Math.max(0.75, +(size * 0.027).toFixed(2));
   const innerSize = size - 2 * borderW;
   const stripHeight = Math.max(4, Math.round(innerSize * 0.25));
   const mAreaHeight = innerSize - stripHeight;
-  const mFontSize = Math.round(innerSize * 0.62);
-  const mTextY = Math.round(mAreaHeight * 0.86);
+  // Monogram height = 62% of M-area height — mirrors the cap-height the
+  // Helvetica M previously occupied, so the lockup proportions don't
+  // shift as we swap glyphs.
+  const glyphSize = Math.max(8, Math.round(mAreaHeight * 0.62));
+  // Optical centering: nudge the M ~2% of innerSize to the right to
+  // counteract the waveform strip's left-of-center visual mass (the
+  // tallest bar sits at index 2 of 6). Mathematical centering reads as
+  // left-heavy; this lifts that.
+  const opticalDX = Math.max(0.5, +(innerSize * 0.02).toFixed(2));
+  // Optical lift: raise the M ~4% of M-area height so its visual center
+  // sits slightly above geometric center (counters perceptual "sag").
+  const opticalDY = -Math.max(0.5, +(mAreaHeight * 0.04).toFixed(2));
+  const glyphX = (innerSize - glyphSize) / 2 + opticalDX;
+  const glyphY = (mAreaHeight - glyphSize) / 2 + opticalDY;
   const filterId = `mmark-wave-${size}`;
 
   return (
@@ -109,18 +121,12 @@ export function MMark({ size = 32, waving = false }: Props) {
             </filter>
           )}
         </defs>
-        <text
-          x={innerSize / 2}
-          y={mTextY}
-          textAnchor="middle"
-          fontFamily="'Helvetica Neue', sans-serif"
-          fontSize={mFontSize}
-          fontWeight={800}
-          fill="#000"
+        <g
+          transform={`translate(${glyphX}, ${glyphY}) scale(${glyphSize / 100})`}
           filter={waving ? `url(#${filterId})` : undefined}
         >
-          M
-        </text>
+          <path d={M_MONOGRAM_PATH} fill="#000" />
+        </g>
       </svg>
 
       {/* Waveform strip — same gold-on-navy treatment as the bottom MOrb. */}

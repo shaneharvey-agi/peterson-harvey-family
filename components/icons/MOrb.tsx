@@ -10,6 +10,13 @@ import { sendMessage } from '@/lib/mutations/chatMessages';
 import { addTask } from '@/lib/mutations/tasks';
 import { sendRequest } from '@/lib/mutations/requests';
 import { saveMemory } from '@/lib/mutations/memories';
+import { M_MONOGRAM_PATH } from './MMonogram';
+
+// Architectural M sized + offset for the 56px orb. Matches the previous
+// font M's cap-height (~18px) but lives on the path, not Helvetica.
+const ORB_GLYPH_SIZE = 22; // 22 path units → ~20px visible glyph
+const ORB_GLYPH_X = (32 - ORB_GLYPH_SIZE) / 2 + 0.6; // optical right-nudge
+const ORB_GLYPH_Y = (36 - ORB_GLYPH_SIZE) / 2 - 1.5; // optical lift
 
 const HOLD_MS = 260;
 const WAVE_CYCLE_MS = 4000;
@@ -441,10 +448,12 @@ export function MOrb() {
             zIndex: 1,
           } as React.CSSProperties}
         >
-          {/* Bold M as inline SVG <text> so the flag-wave filter can apply.
-              Sine-wave-flavored displacement via feTurbulence + animated
-              baseFrequency (stitched), tuned slow + gentle for "heavy silk
-              in a light breeze." */}
+          {/* Architectural M monogram (path-based, never a text font) so
+              the same glyph reads identically across MMark, MOrb, splash,
+              and PWA icon. The flag-wave filter applies via feTurbulence
+              displacement on the path, tuned slow + gentle for "heavy silk
+              in a light breeze." Optical X/Y offsets compensate for the
+              waveform strip's left-of-center visual mass. */}
           <svg
             width={32}
             height={36}
@@ -500,18 +509,12 @@ export function MOrb() {
                 </filter>
               )}
             </defs>
-            <text
-              x="16"
-              y="28"
-              textAnchor="middle"
-              fontFamily="'Helvetica Neue', sans-serif"
-              fontSize="26"
-              fontWeight={800}
-              fill="#000"
+            <g
+              transform={`translate(${ORB_GLYPH_X}, ${ORB_GLYPH_Y}) scale(${ORB_GLYPH_SIZE / 100})`}
               filter={holding ? 'url(#morb-flag-wave)' : undefined}
             >
-              M
-            </text>
+              <path d={M_MONOGRAM_PATH} fill="#000" />
+            </g>
           </svg>
 
           {/* Bottom strip — cross-fades from waveform bars (idle, the

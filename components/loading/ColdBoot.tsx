@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { tokens } from '@/lib/design-tokens';
 import { impact } from '@/lib/haptics';
+import { M_MONOGRAM_PATH } from '@/components/icons/MMonogram';
 
 const STATUS_MESSAGES = [
   'Awakening Mikayla...',
@@ -143,13 +144,11 @@ function LivingSignature() {
   // forces "ikayla" to a known width, so the math stays predictable
   // across browsers.
   //
-  // All proportions match the home-screen TopStrip lockup (MMark size
-  // 32 + wordmark fontSize 20 + flex gap 4) doubled to splash scale, so
-  // the splash → dashboard transition lands on identical relative
-  // proportions:
-  //   wordmark ÷ orb     = 20/32 = 0.625   (40 here)
-  //   gap ÷ orb          =  4/32 = 0.125   ( 8 here)
-  const WORD_GAP = 8;
+  // The gap is intentionally tighter than the older M_SIZE * 0.125
+  // ratio so the "i" reads as a natural continuation of the M asset
+  // (not a separate logo + word). 2px between the orb's outer gold
+  // ring and the i is enough to keep them legible without divorcing.
+  const WORD_GAP = 2;
   const WORD_TEXT_LENGTH = 115;
   const W = M_SIZE + WORD_GAP + WORD_TEXT_LENGTH + 14; // 14px symmetric pad
   const H = 72;
@@ -165,8 +164,23 @@ function LivingSignature() {
   const INNER_Y = M_Y + RING_W + BAND_W;
   const STRIP = Math.round(INNER_SIZE * 0.25);
   const M_AREA = INNER_SIZE - STRIP;
-  const M_FONT = Math.round(M_AREA * 0.92);
-  const M_TEXT_Y = INNER_Y + Math.round(M_AREA * 0.86);
+
+  // Architectural M monogram (path-based, single source of truth in
+  // MMonogram.tsx). Sized to roughly match the previous Helvetica M's
+  // cap-height presence; positioned with a small optical right-nudge
+  // and upward lift to compensate for the strip's left-of-center
+  // visual mass and the natural perceptual "sag" of bottom-anchored
+  // glyphs.
+  const GLYPH_SIZE = Math.round(M_AREA * 0.62); // ~24 at M_SIZE=64
+  const GLYPH_X =
+    INNER_X +
+    (INNER_SIZE - GLYPH_SIZE) / 2 +
+    Math.max(0.5, +(INNER_SIZE * 0.02).toFixed(2));
+  const GLYPH_Y =
+    INNER_Y +
+    (M_AREA - GLYPH_SIZE) / 2 -
+    Math.max(0.5, +(M_AREA * 0.04).toFixed(2));
+  const GLYPH_CAP_MID = GLYPH_Y + GLYPH_SIZE / 2;
 
   const OUTER_RX = Math.round(M_SIZE * 0.26);
   const MIDDLE_RX = Math.max(0, OUTER_RX - RING_W);
@@ -174,14 +188,10 @@ function LivingSignature() {
 
   const WORD_X = M_X + M_SIZE + WORD_GAP;
   const WORD_FONT = Math.round(M_SIZE * 0.625); // 40 at M_SIZE=64
-  // Optical centering: align the wordmark's x-height middle with the
-  // M's cap-height middle. cap-height ≈ 0.71·fontSize and x-height ≈
-  // 0.50·fontSize for Helvetica Neue, so:
-  //   M cap-mid     = M_TEXT_Y - 0.355·M_FONT
-  //   wordmark x-mid = WORD_Y  - 0.25·WORD_FONT
-  // Setting them equal yields WORD_Y as below.
-  const M_CAP_MID = M_TEXT_Y - Math.round(M_FONT * 0.355);
-  const WORD_Y = M_CAP_MID + Math.round(WORD_FONT * 0.25);
+  // Optical alignment: the wordmark's x-height middle (~0.25·fontSize
+  // above its baseline) aligns with the monogram's vertical mid so the
+  // pair reads as one continuous typographic line.
+  const WORD_Y = GLYPH_CAP_MID + Math.round(WORD_FONT * 0.25);
 
   const heights = [3, 6, 9, 5, 8, 4];
   const barW = Math.max(1.4, INNER_SIZE * 0.03);
@@ -275,18 +285,12 @@ function LivingSignature() {
           rx={INNER_RX}
           fill={tokens.gold}
         />
-        {/* Bold M on the gold body */}
-        <text
-          x={INNER_X + INNER_SIZE / 2}
-          y={M_TEXT_Y}
-          textAnchor="middle"
-          fontFamily="'Helvetica Neue', sans-serif"
-          fontSize={M_FONT}
-          fontWeight={800}
-          fill="#000"
+        {/* Architectural M monogram on the gold body. */}
+        <g
+          transform={`translate(${GLYPH_X}, ${GLYPH_Y}) scale(${GLYPH_SIZE / 100})`}
         >
-          M
-        </text>
+          <path d={M_MONOGRAM_PATH} fill="#000" />
+        </g>
         {/* Waveform strip — clipped to the inner body's bottom corners
             via overlapping rect on top of the gold inner. */}
         <rect

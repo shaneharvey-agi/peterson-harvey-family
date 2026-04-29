@@ -42,13 +42,15 @@ export function TopStrip({ unreadMessages }: { unreadMessages?: number }) {
       }}
     >
       <div className="flex items-center justify-between px-4 py-2.5">
-        {/* Left cluster — unified brand logo: bottom-nav style M (gold square,
-            bold M, waveform strip) acts as the leading "M" of "Mikayla", so
-            the wordmark reads "ikayla" beside it. */}
+        {/* Left cluster — unified brand logo: orb-framed architectural M
+            monogram acts as the leading "M" of "Mikayla", so the wordmark
+            reads "ikayla" beside it. The 2px gap is intentionally tight
+            so the i feels like a natural continuation of the M asset
+            rather than a separate logo + word. */}
         <div
           className="flex"
           aria-label="Mikayla"
-          style={{ gap: 4, alignItems: 'flex-start' }}
+          style={{ gap: 2, alignItems: 'flex-start' }}
         >
           <MMark size={32} />
           <span
@@ -56,13 +58,11 @@ export function TopStrip({ unreadMessages }: { unreadMessages?: number }) {
             style={{
               fontSize: 20,
               fontWeight: 800,
-              letterSpacing: '0.3px',
+              letterSpacing: '0.1px',
               lineHeight: 1,
-              // Cap-top of the wordmark sits ~1px below its line-box top,
-              // while the M's cap-top sits ~5px below the icon's top edge.
-              // Push the wordmark down so the two cap-tops land on the
-              // same horizontal line.
-              marginTop: 4,
+              // Push the wordmark down so its cap-top aligns with the
+              // monogram's optical cap-top inside the orb.
+              marginTop: 3,
             }}
           >
             ikayla

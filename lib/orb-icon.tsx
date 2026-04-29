@@ -1,7 +1,8 @@
 // Shared JSX renderer for the M Orb icon used by app/icon.tsx (192/512)
 // and app/apple-icon.tsx (180). Reproduces the bottom-nav orb's exact
 // layered structure at any size: outer gold ring → navy band → gold
-// body with a bold black "M" centered above a navy waveform strip.
+// body with the architectural M monogram (path, not text) centered
+// above a navy waveform strip.
 //
 // PNG icons can't paint outside their own bounds, so the bottom-nav
 // orb's box-shadow gold ring is rendered here as the outermost layer
@@ -10,57 +11,35 @@
 //   2. middle layer    — navy band  (matches the orb's `border: 3px navy`)
 //   3. inner layer     — gold body  (M glyph + waveform strip)
 //
-// Font note: Satori (the next/og rasterizer) ships only 400/700 weights
-// of Noto Sans by default, so a CSS fontWeight of 800 falls back to
-// 700 — making the icon's M visibly thinner than the live MOrb's
-// Helvetica Neue 800. We fix that by fetching Inter 800 (ExtraBold)
-// from Google Fonts at edge runtime, subset to just the "M" glyph
-// (sub-1KB), and passing it to ImageResponse via the `fonts` option.
-// Inter 800 ≈ Helvetica Neue Heavy (800) visually; Inter 900 (Black)
-// reads heavier than the in-app MMark, so we deliberately stay at 800.
+// Glyph note: previous versions rasterized the M as a <div>M</div> with
+// Inter 800 fetched from Google Fonts at edge runtime. We've moved to a
+// path-based monogram (single source of truth in components/icons/
+// MMonogram.tsx), so Satori draws the glyph as inline SVG with no font
+// dependency. Same M every render, no edge fetch, no weight drift.
 //
 // Proportions taken from the live MOrb (56x56):
 //   gold ring     1.5 / 56 = 2.68%   outer halo
 //   navy band     3   / 56 = 5.36%   inset frame
 //   bottom strip 14   / 56 = 25%     waveform footer (of inner body)
-//   M font       26   / 56 = 46.4%   bold M centered above the strip
 //   radius       16   / 56 = 28.6%   soft squircle
 
 import * as React from 'react';
+import {
+  M_MONOGRAM_PATH,
+  M_MONOGRAM_VIEWBOX,
+} from '@/components/icons/MMonogram';
 
 const BAR_HEIGHT_RATIOS = [3, 6, 9, 5, 8, 4].map((h) => h / 56);
 
 /**
- * Load Inter 800 (ExtraBold) subset to just the "M" glyph from Google
- * Fonts. Matches the visual weight of Helvetica Neue 800 used by the
- * in-app MMark. Returns an empty array if the fetch fails so the icon
- * route can still fall back to Satori's bundled font (a thinner M is
- * better than no icon at all).
+ * No-op font loader retained for the icon-route signatures so the
+ * generators don't have to change call shape. The monogram is now path
+ * geometry, so Satori needs no extra fonts to render the icon.
  */
 export async function loadOrbIconFonts(): Promise<
   Array<{ name: string; data: ArrayBuffer; weight: 800; style: 'normal' }>
 > {
-  try {
-    const cssUrl =
-      'https://fonts.googleapis.com/css2?family=Inter:wght@800&text=M&display=swap';
-    // Modern UA so Google returns a woff2 link Satori can read.
-    const cssRes = await fetch(cssUrl, {
-      headers: {
-        'User-Agent':
-          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-      },
-    });
-    if (!cssRes.ok) return [];
-    const css = await cssRes.text();
-    const match = css.match(/src:\s*url\(([^)]+)\)\s*format\(/);
-    if (!match) return [];
-    const fontRes = await fetch(match[1]);
-    if (!fontRes.ok) return [];
-    const data = await fontRes.arrayBuffer();
-    return [{ name: 'Inter', data, weight: 800, style: 'normal' }];
-  } catch {
-    return [];
-  }
+  return [];
 }
 
 export function renderOrbIcon(size: number): React.ReactElement {
@@ -74,7 +53,13 @@ export function renderOrbIcon(size: number): React.ReactElement {
   const innerRadius = Math.max(0, middleRadius - bandW);
   const stripHeight = Math.round(innerSize * 0.25);
   const mAreaHeight = innerSize - stripHeight;
-  const mFontSize = Math.round(mAreaHeight * 0.92);
+  // Architectural M monogram sized + offset to match MMark/MOrb.
+  const glyphSize = Math.round(mAreaHeight * 0.62);
+  // Optical offsets — counteract the waveform strip's left-of-center
+  // visual mass and the natural perceptual sag of bottom-anchored
+  // glyphs. Same ratios used by MMark/MOrb so every surface lines up.
+  const opticalDX = Math.max(1, Math.round(innerSize * 0.02));
+  const opticalDY = -Math.max(1, Math.round(mAreaHeight * 0.04));
   const barWidth = Math.max(2, Math.round(innerSize * 0.03));
   const barGap = Math.max(2, Math.round(innerSize * 0.027));
   const barRadius = Math.max(1, Math.round(barWidth * 0.3));
@@ -107,7 +92,7 @@ export function renderOrbIcon(size: number): React.ReactElement {
           display: 'flex',
         }}
       >
-        {/* Inner: gold body with M + waveform strip. */}
+        {/* Inner: gold body with M monogram + waveform strip. */}
         <div
           style={{
             width: '100%',
@@ -127,15 +112,18 @@ export function renderOrbIcon(size: number): React.ReactElement {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontFamily: 'Inter',
-              fontWeight: 800,
-              fontSize: mFontSize,
-              lineHeight: 1,
-              color: '#000000',
-              letterSpacing: '-0.04em',
             }}
           >
-            M
+            <svg
+              width={glyphSize}
+              height={glyphSize}
+              viewBox={M_MONOGRAM_VIEWBOX}
+              style={{
+                transform: `translate(${opticalDX}px, ${opticalDY}px)`,
+              }}
+            >
+              <path d={M_MONOGRAM_PATH} fill="#000000" />
+            </svg>
           </div>
           <div
             style={{

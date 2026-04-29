@@ -259,7 +259,7 @@ function BrandCluster({ typing }: { typing: boolean }) {
     <div
       className="flex min-w-0"
       aria-label="Mikayla"
-      style={{ gap: 4, alignItems: 'flex-start' }}
+      style={{ gap: 2, alignItems: 'flex-start' }}
     >
       <MMark size={32} waving={typing} />
       <span
@@ -267,12 +267,9 @@ function BrandCluster({ typing }: { typing: boolean }) {
         style={{
           fontSize: 20,
           fontWeight: 800,
-          letterSpacing: '0.3px',
+          letterSpacing: '0.1px',
           lineHeight: 1,
-          // Aligns the wordmark's cap-top with the M's cap-top inside
-          // the icon (M cap-top ≈ 5px below icon top; wordmark cap-top
-          // ≈ 1px below its line-box top).
-          marginTop: 4,
+          marginTop: 3,
         }}
       >
         ikayla
