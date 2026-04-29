@@ -7,12 +7,17 @@ import { MMark } from '@/components/icons/MMark';
 
 const STATUS_TEXT = 'Waking…';
 
+// Choreography budget — slow heavy-silk reveal, then idle until `ready`.
 const SLIDE_MS = 1200;
-const STATUS_DELAY_MS = 700;
+const SLIDE_DELAY_MS = 200;
+const STATUS_DELAY_MS = 720;
 const STATUS_MS = 900;
-const SEQUENCE_TOTAL_MS = SLIDE_MS + 200; // ~1.4s of choreography then idle
 const EXIT_MS = 700;
+// "Heavy Silk" — slow ease-out the wordmark settles into; same curve as
+// the M Orb's flag-wave so the brand language stays coherent across
+// surfaces.
 const HEAVY_SILK = 'cubic-bezier(0.16, 1, 0.4, 1)';
+const EXIT_EASE = 'cubic-bezier(0.22, 1, 0.36, 1)';
 
 interface Props {
   /** Flip to true once the app's ready signal has resolved. Triggers
@@ -24,12 +29,14 @@ interface Props {
 }
 
 /**
- * Cold Boot splash. The fixed M-Orb (the SAME MMark asset used in the
- * TopStrip and chat header — no fallback fonts, no parallel SVG) lands
- * instantly at screen center. "ikayla" emerges from behind the orb on
- * a heavy-silk slide, then "Waking…" fades in below with a subtle
- * blur-to-clear. Total scripted sequence < 1.5s; the gate then waits
- * on `ready` and runs the zoom-out exit.
+ * Cold Boot splash. The M-Orb (the SAME MMark asset used in the
+ * TopStrip and chat header — never a parallel SVG, never a font M)
+ * lands at screen center at static scale 1.0. The "ikayla" wordmark
+ * emerges from behind the orb on a heavy-silk horizontal slide, then
+ * "Waking…" fades in below. There is no swap, no re-mount: the orb
+ * is a single continuous element from first paint through the exit
+ * zoom-out. When `ready` flips, the whole cluster zooms out softly to
+ * hand off to the live app.
  */
 export function ColdBoot({ ready, onDone }: Props) {
   const [exiting, setExiting] = useState(false);
@@ -61,17 +68,19 @@ export function ColdBoot({ ready, onDone }: Props) {
         justifyContent: 'center',
         zIndex: 100,
         opacity: exiting ? 0 : 1,
-        transition: `opacity ${EXIT_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`,
+        transition: `opacity ${EXIT_MS}ms ${EXIT_EASE}`,
         pointerEvents: exiting ? 'none' : 'auto',
         paddingTop: 'env(safe-area-inset-top)',
         paddingBottom: 'env(safe-area-inset-bottom)',
         overflow: 'hidden',
       }}
     >
+      {/* Cluster zoom-out only fires on exit; entry holds the orb at
+          static scale 1.0 so the M lands like a stamped seal. */}
       <div
         style={{
           transform: exiting ? 'scale(3.4)' : 'scale(1)',
-          transition: `transform ${EXIT_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`,
+          transition: `transform ${EXIT_MS}ms ${EXIT_EASE}`,
           willChange: 'transform',
           transformOrigin: 'center',
         }}
@@ -98,14 +107,6 @@ export function ColdBoot({ ready, onDone }: Props) {
       </div>
 
       <style jsx>{`
-        @keyframes cb-ikayla-slide {
-          from {
-            transform: translateX(calc(-100% - 36px));
-          }
-          to {
-            transform: translateX(0);
-          }
-        }
         @keyframes cb-status-blur {
           from {
             opacity: 0;
@@ -121,26 +122,26 @@ export function ColdBoot({ ready, onDone }: Props) {
           will-change: opacity, filter;
         }
       `}</style>
-      {/* Suppress lint — SEQUENCE_TOTAL_MS is referenced by the gate
-          in tests; keeps the choreography budget visible at the top. */}
-      <span hidden aria-hidden="true">{SEQUENCE_TOTAL_MS}</span>
     </div>
   );
 }
 
 /**
- * Orb (instant) + ikayla (slides out from behind on heavy-silk easing).
- * Uses the live MMark component so the asset is identical to every
- * other surface in the app — never a parallel SVG, never a font M.
+ * One continuous element: the orb sits at the cluster's left edge,
+ * pinned at scale 1.0, while "ikayla" — absolutely positioned at
+ * left:100% (i.e. flush right of the orb) and z-indexed below the orb —
+ * starts translated fully behind the orb and slides right on heavy
+ * silk, emerging cleanly from behind the M. No remount, no opacity
+ * fade-in for the orb; it is the same node from first paint through
+ * exit.
  */
 function BrandCluster() {
-  // Splash sizing — the orb scales up to size=64; the wordmark
-  // scales to fontSize=40 (the same 0.625 ratio as the TopStrip
-  // lockup at size=32 / fontSize=20). The orb is dropped 8px so its
-  // M optical center lands on the wordmark baseline rather than its
-  // x-height, locking the orb to the name's flow. The 4px paddingLeft
-  // on the ikayla wrapper plays the role of the 2px lockup gap at
-  // splash scale.
+  // Splash sizing — orb at size=64; wordmark at fontSize=40 (the same
+  // 0.625 ratio as the TopStrip lockup at size=32 / fontSize=20).
+  // marginTop=11 on the orb + paddingTop=16 on the wordmark land the
+  // M's bottom edge on the wordmark baseline (≈ fontSize * 0.78 from
+  // wordmark top), so the orb and "ikayla" sit on a single shelf
+  // rather than the orb floating above the lowercase x-line.
   return (
     <div
       aria-label="Mikayla"
@@ -152,7 +153,7 @@ function BrandCluster() {
       }}
     >
       <div style={{ position: 'relative', zIndex: 2 }}>
-        <MMark size={64} waving marginTop={8} />
+        <MMark size={64} waving marginTop={11} />
       </div>
       <span
         className="splash-ikayla wordmark"
@@ -164,7 +165,7 @@ function BrandCluster() {
           display: 'flex',
           alignItems: 'flex-start',
           paddingLeft: 4,
-          paddingTop: 16, // visually aligns wordmark cap-top with orb's M cap-top after the marginTop=8 drop
+          paddingTop: 16,
           fontSize: 40,
           fontWeight: 800,
           letterSpacing: '0.1px',
@@ -179,12 +180,17 @@ function BrandCluster() {
       </span>
       <style jsx>{`
         .splash-ikayla {
-          transform: translateX(calc(-100% - 36px));
-          animation: cb-ikayla-slide ${SLIDE_MS}ms ${HEAVY_SILK} 60ms both;
+          /* Start fully tucked behind the orb — translateX(-100%) lifts
+             the wordmark's left edge to the cluster's left edge (where
+             the orb sits), so the M completely covers it. The slide
+             reveal then settles it back to translateX(0). */
+          transform: translateX(-100%);
+          animation: cb-ikayla-slide ${SLIDE_MS}ms ${HEAVY_SILK}
+            ${SLIDE_DELAY_MS}ms both;
         }
         @keyframes cb-ikayla-slide {
           from {
-            transform: translateX(calc(-100% - 36px));
+            transform: translateX(-100%);
           }
           to {
             transform: translateX(0);

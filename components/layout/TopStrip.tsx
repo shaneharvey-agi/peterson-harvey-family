@@ -52,10 +52,13 @@ export function TopStrip({ unreadMessages }: { unreadMessages?: number }) {
           aria-label="Mikayla"
           style={{ gap: 2, alignItems: 'flex-start' }}
         >
-          {/* Orb is dropped 4px so the M's optical center sits on the
-              wordmark baseline (not centered on x-height). Locks the
-              orb to the rest of the name's flow. */}
-          <MMark size={32} marginTop={4} />
+          {/* The orb's marginTop + the wordmark's paddingTop together
+              land the M's bottom edge on the lowercase baseline of
+              "ikayla". With the v3 monogram (top y=4, bottom stretched
+              to y=100 in path coords), the M sits on the same physical
+              shelf as the lowercase letters rather than centered on
+              their x-height. */}
+          <MMark size={32} marginTop={2} />
           <span
             className="wordmark"
             style={{
@@ -63,6 +66,7 @@ export function TopStrip({ unreadMessages }: { unreadMessages?: number }) {
               fontWeight: 800,
               letterSpacing: '0.1px',
               lineHeight: 1,
+              paddingTop: 4,
             }}
           >
             ikayla

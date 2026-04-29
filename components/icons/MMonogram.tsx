@@ -6,16 +6,16 @@
 // PNGs, and the static public/M-Monogram.svg file. No font loading, no
 // CSS fallback drift, no weight-mismatch on edge runtimes.
 //
-// Geometry (100x100 viewBox) — v2, heavier weight:
-//   - Vertical outer stems (no Helvetica side-slope) on x = 4..28 and 72..96.
-//     24-unit stems vs the v1 18-unit stems = ~33% heavier verticals.
-//   - Outer V apex at (50, 50); inner V apex at (50, 78). Apex sits
-//     slightly higher than v1 so the V reads sharper inside the bolder
-//     frame.
-//   - Inner-stem inside corners at (28, 32) and (72, 32). Inner and
-//     outer diagonals are parallel — perpendicular stroke thickness
-//     ~25 units, slightly heavier than the 24-unit stems, in the
-//     Trajan / architectural Roman tradition.
+// Geometry (100x100 viewBox) — v3, Hard Design Lock bold cut:
+//   - Vertical outer stems on x = 4..34 and 66..96. 30-unit stems vs the
+//     v2 24-unit stems = +25% heavier verticals.
+//   - Top edge locked at y = 4 (architectural cap-line); bottom edge
+//     stretched from y = 96 to y = 100 so the M's foot reaches the
+//     viewBox edge. The wordmark "ikayla" sits on this same physical
+//     shelf in the lockup — locking M and ika to a shared baseline.
+//   - Outer V apex (50, 50); inner V apex (50, 78). Inside corners at
+//     (34, 32) and (66, 32). Outer and inner diagonals stay perfectly
+//     parallel (slope 46/16) — Trajan / architectural Roman bones.
 //
 // Render target notes:
 //   - DOM SVG components (MMark, MOrb, ColdBoot) import the React
@@ -28,7 +28,7 @@
 export const M_MONOGRAM_VIEWBOX = '0 0 100 100';
 
 export const M_MONOGRAM_PATH =
-  'M 4 96 L 4 4 L 28 4 L 50 50 L 72 4 L 96 4 L 96 96 L 72 96 L 72 32 L 50 78 L 28 32 L 28 96 Z';
+  'M 4 100 L 4 4 L 34 4 L 50 50 L 66 4 L 96 4 L 96 100 L 66 100 L 66 32 L 50 78 L 34 32 L 34 100 Z';
 
 interface Props {
   /** Rendered width/height in px. Defaults to 32. */
