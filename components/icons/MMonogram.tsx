@@ -6,13 +6,16 @@
 // PNGs, and the static public/M-Monogram.svg file. No font loading, no
 // CSS fallback drift, no weight-mismatch on edge runtimes.
 //
-// Geometry (100x100 viewBox):
-//   - Vertical outer stems (no Helvetica side-slope) on x = 4..22 and 78..96.
-//   - Outer V apex at (50, 56); inner V apex at (50, 80).
-//   - Inner-stem inside corners at (22, 28) and (78, 28).
-//   - Inner and outer diagonals are parallel — perpendicular stroke
-//     thickness ~21 units, slightly heavier than the 18-unit stems, in
-//     the Trajan / architectural Roman tradition.
+// Geometry (100x100 viewBox) — v2, heavier weight:
+//   - Vertical outer stems (no Helvetica side-slope) on x = 4..28 and 72..96.
+//     24-unit stems vs the v1 18-unit stems = ~33% heavier verticals.
+//   - Outer V apex at (50, 50); inner V apex at (50, 78). Apex sits
+//     slightly higher than v1 so the V reads sharper inside the bolder
+//     frame.
+//   - Inner-stem inside corners at (28, 32) and (72, 32). Inner and
+//     outer diagonals are parallel — perpendicular stroke thickness
+//     ~25 units, slightly heavier than the 24-unit stems, in the
+//     Trajan / architectural Roman tradition.
 //
 // Render target notes:
 //   - DOM SVG components (MMark, MOrb, ColdBoot) import the React
@@ -25,7 +28,7 @@
 export const M_MONOGRAM_VIEWBOX = '0 0 100 100';
 
 export const M_MONOGRAM_PATH =
-  'M 4 96 L 4 4 L 22 4 L 50 56 L 78 4 L 96 4 L 96 96 L 78 96 L 78 28 L 50 80 L 22 28 L 22 96 Z';
+  'M 4 96 L 4 4 L 28 4 L 50 50 L 72 4 L 96 4 L 96 96 L 72 96 L 72 32 L 50 78 L 28 32 L 28 96 Z';
 
 interface Props {
   /** Rendered width/height in px. Defaults to 32. */

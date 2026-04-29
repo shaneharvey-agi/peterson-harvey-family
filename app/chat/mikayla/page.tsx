@@ -261,7 +261,7 @@ function BrandCluster({ typing }: { typing: boolean }) {
       aria-label="Mikayla"
       style={{ gap: 2, alignItems: 'flex-start' }}
     >
-      <MMark size={32} waving={typing} />
+      <MMark size={32} waving={typing} marginTop={4} />
       <span
         className="wordmark"
         style={{
@@ -269,7 +269,6 @@ function BrandCluster({ typing }: { typing: boolean }) {
           fontWeight: 800,
           letterSpacing: '0.1px',
           lineHeight: 1,
-          marginTop: 3,
         }}
       >
         ikayla

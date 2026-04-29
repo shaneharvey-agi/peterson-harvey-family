@@ -42,6 +42,35 @@ export async function loadOrbIconFonts(): Promise<
   return [];
 }
 
+/**
+ * Wraps the orb in a #07090F navy canvas so the iOS home-screen icon
+ * and Android maskable icon blend seamlessly with the PWA launch
+ * background. The orb itself occupies ~78% of the icon edge — enough
+ * breathing room to read clearly on the home grid without shrinking
+ * the brand mark too far. Mirrors the canvas the apple-startup-image
+ * route already uses, so the icon → splash transition lands on a
+ * single continuous navy field.
+ */
+export function renderBrandIcon(size: number): React.ReactElement {
+  const orbSize = Math.round(size * 0.78);
+  return (
+    <div
+      style={{
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: '#07090F',
+      }}
+    >
+      <div style={{ width: orbSize, height: orbSize, display: 'flex' }}>
+        {renderOrbIcon(orbSize)}
+      </div>
+    </div>
+  );
+}
+
 export function renderOrbIcon(size: number): React.ReactElement {
   // Bumped slightly above literal proportions so the ring + band stay
   // legible on the home-screen grid (where icons render at ~60px).

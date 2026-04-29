@@ -8,6 +8,10 @@ interface Props {
   size?: number;
   /** When true, the M does the same flag-wave used in the chat header. */
   waving?: boolean;
+  /** Optional vertical nudge — used by header lockups to drop the orb so
+   *  its M optical center sits on the wordmark baseline rather than its
+   *  cap-top. */
+  marginTop?: number;
 }
 
 const BAR_HEIGHTS = [3, 5, 7, 4, 6, 3];
@@ -24,7 +28,7 @@ const BAR_DELAYS = ['0s', '0.1s', '0.2s', '0.15s', '0.05s', '0.25s'];
  * waveform strip below. Pair with the "ikayla" wordmark for the unified
  * header logo.
  */
-export function MMark({ size = 32, waving = false }: Props) {
+export function MMark({ size = 32, waving = false, marginTop = 0 }: Props) {
   const height = size;
   const width = size;
   // Proportions taken from the live MOrb (56px square):
@@ -60,6 +64,7 @@ export function MMark({ size = 32, waving = false }: Props) {
       style={{
         width,
         height,
+        marginTop,
         borderRadius: Math.round(height * 0.286),
         background: tokens.gold,
         border: `${borderW}px solid ${tokens.bg}`,

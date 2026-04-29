@@ -1,10 +1,10 @@
 // PWA + favicon icons. Generated at build time via next/og's ImageResponse
-// — no extra deps, no static asset to keep in sync. Mirrors the M Orb in
-// the bottom nav (gold body, bold black "M", dark bottom strip with the
-// static waveform bars).
+// — no extra deps, no static asset to keep in sync. Mirrors the M Orb
+// in the bottom nav, sitting on a #07090F navy canvas so the icon
+// blends seamlessly with the PWA launch splash.
 
 import { ImageResponse } from 'next/og';
-import { loadOrbIconFonts, renderOrbIcon } from '@/lib/orb-icon';
+import { loadOrbIconFonts, renderBrandIcon } from '@/lib/orb-icon';
 
 export const runtime = 'edge';
 
@@ -18,7 +18,7 @@ export function generateImageMetadata() {
 export default async function Icon({ id }: { id: string }) {
   const size = id === '512' ? 512 : 192;
   const fonts = await loadOrbIconFonts();
-  return new ImageResponse(renderOrbIcon(size), {
+  return new ImageResponse(renderBrandIcon(size), {
     width: size,
     height: size,
     fonts,

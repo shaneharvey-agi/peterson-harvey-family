@@ -52,7 +52,10 @@ export function TopStrip({ unreadMessages }: { unreadMessages?: number }) {
           aria-label="Mikayla"
           style={{ gap: 2, alignItems: 'flex-start' }}
         >
-          <MMark size={32} />
+          {/* Orb is dropped 4px so the M's optical center sits on the
+              wordmark baseline (not centered on x-height). Locks the
+              orb to the rest of the name's flow. */}
+          <MMark size={32} marginTop={4} />
           <span
             className="wordmark"
             style={{
@@ -60,9 +63,6 @@ export function TopStrip({ unreadMessages }: { unreadMessages?: number }) {
               fontWeight: 800,
               letterSpacing: '0.1px',
               lineHeight: 1,
-              // Push the wordmark down so its cap-top aligns with the
-              // monogram's optical cap-top inside the orb.
-              marginTop: 3,
             }}
           >
             ikayla
