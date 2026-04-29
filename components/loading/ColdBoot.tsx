@@ -142,8 +142,15 @@ function LivingSignature() {
   // the visual content, not a sparse 320×100 box. textLength below
   // forces "ikayla" to a known width, so the math stays predictable
   // across browsers.
-  const WORD_GAP = 6;
-  const WORD_TEXT_LENGTH = 140;
+  //
+  // All proportions match the home-screen TopStrip lockup (MMark size
+  // 32 + wordmark fontSize 20 + flex gap 4) doubled to splash scale, so
+  // the splash → dashboard transition lands on identical relative
+  // proportions:
+  //   wordmark ÷ orb     = 20/32 = 0.625   (40 here)
+  //   gap ÷ orb          =  4/32 = 0.125   ( 8 here)
+  const WORD_GAP = 8;
+  const WORD_TEXT_LENGTH = 115;
   const W = M_SIZE + WORD_GAP + WORD_TEXT_LENGTH + 14; // 14px symmetric pad
   const H = 72;
   const M_X = 7;
@@ -166,12 +173,15 @@ function LivingSignature() {
   const INNER_RX = Math.max(0, MIDDLE_RX - BAND_W);
 
   const WORD_X = M_X + M_SIZE + WORD_GAP;
-  // Optical centering: align the x-height middle of lowercase "ikayla"
-  // with the cap-height middle of the bold "M" inside the orb. For a
-  // 64px orb with the M at ~36px font, that lands the wordmark
-  // baseline near M_Y + 0.625 × M_SIZE.
-  const WORD_Y = M_Y + Math.round(M_SIZE * 0.625);
-  const WORD_FONT = 50;
+  const WORD_FONT = Math.round(M_SIZE * 0.625); // 40 at M_SIZE=64
+  // Optical centering: align the wordmark's x-height middle with the
+  // M's cap-height middle. cap-height ≈ 0.71·fontSize and x-height ≈
+  // 0.50·fontSize for Helvetica Neue, so:
+  //   M cap-mid     = M_TEXT_Y - 0.355·M_FONT
+  //   wordmark x-mid = WORD_Y  - 0.25·WORD_FONT
+  // Setting them equal yields WORD_Y as below.
+  const M_CAP_MID = M_TEXT_Y - Math.round(M_FONT * 0.355);
+  const WORD_Y = M_CAP_MID + Math.round(WORD_FONT * 0.25);
 
   const heights = [3, 6, 9, 5, 8, 4];
   const barW = Math.max(1.4, INNER_SIZE * 0.03);

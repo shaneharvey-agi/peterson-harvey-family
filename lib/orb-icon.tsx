@@ -11,11 +11,13 @@
 //   3. inner layer     — gold body  (M glyph + waveform strip)
 //
 // Font note: Satori (the next/og rasterizer) ships only 400/700 weights
-// of Noto Sans by default, so a CSS fontWeight of 800/900 falls back to
+// of Noto Sans by default, so a CSS fontWeight of 800 falls back to
 // 700 — making the icon's M visibly thinner than the live MOrb's
-// Helvetica Neue 800. We fix that by fetching Inter 900 from Google
-// Fonts at edge runtime, subset to just the "M" glyph (sub-1KB), and
-// passing it to ImageResponse via the `fonts` option.
+// Helvetica Neue 800. We fix that by fetching Inter 800 (ExtraBold)
+// from Google Fonts at edge runtime, subset to just the "M" glyph
+// (sub-1KB), and passing it to ImageResponse via the `fonts` option.
+// Inter 800 ≈ Helvetica Neue Heavy (800) visually; Inter 900 (Black)
+// reads heavier than the in-app MMark, so we deliberately stay at 800.
 //
 // Proportions taken from the live MOrb (56x56):
 //   gold ring     1.5 / 56 = 2.68%   outer halo
@@ -29,16 +31,18 @@ import * as React from 'react';
 const BAR_HEIGHT_RATIOS = [3, 6, 9, 5, 8, 4].map((h) => h / 56);
 
 /**
- * Load Inter 900 subset to just the "M" glyph from Google Fonts.
- * Returns an empty array if the fetch fails so the icon route can still
- * fall back to Satori's bundled font (better thin M than no icon).
+ * Load Inter 800 (ExtraBold) subset to just the "M" glyph from Google
+ * Fonts. Matches the visual weight of Helvetica Neue 800 used by the
+ * in-app MMark. Returns an empty array if the fetch fails so the icon
+ * route can still fall back to Satori's bundled font (a thinner M is
+ * better than no icon at all).
  */
 export async function loadOrbIconFonts(): Promise<
-  Array<{ name: string; data: ArrayBuffer; weight: 900; style: 'normal' }>
+  Array<{ name: string; data: ArrayBuffer; weight: 800; style: 'normal' }>
 > {
   try {
     const cssUrl =
-      'https://fonts.googleapis.com/css2?family=Inter:wght@900&text=M&display=swap';
+      'https://fonts.googleapis.com/css2?family=Inter:wght@800&text=M&display=swap';
     // Modern UA so Google returns a woff2 link Satori can read.
     const cssRes = await fetch(cssUrl, {
       headers: {
@@ -53,7 +57,7 @@ export async function loadOrbIconFonts(): Promise<
     const fontRes = await fetch(match[1]);
     if (!fontRes.ok) return [];
     const data = await fontRes.arrayBuffer();
-    return [{ name: 'Inter', data, weight: 900, style: 'normal' }];
+    return [{ name: 'Inter', data, weight: 800, style: 'normal' }];
   } catch {
     return [];
   }
@@ -124,7 +128,7 @@ export function renderOrbIcon(size: number): React.ReactElement {
               alignItems: 'center',
               justifyContent: 'center',
               fontFamily: 'Inter',
-              fontWeight: 900,
+              fontWeight: 800,
               fontSize: mFontSize,
               lineHeight: 1,
               color: '#000000',
