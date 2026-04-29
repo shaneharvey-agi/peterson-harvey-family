@@ -90,7 +90,7 @@ export function ColdBoot({ ready, onDone }: Props) {
 
       <div
         style={{
-          marginTop: 44,
+          marginTop: 22,
           fontSize: 11,
           letterSpacing: '1.6px',
           textTransform: 'uppercase',
@@ -137,10 +137,17 @@ function LivingSignature() {
   // Outer footprint of the orb. Sized to read at the dashboard scale
   // before the exit-zoom kicks in.
   const M_SIZE = 64;
-  const W = 320;
-  const H = 100;
-  const M_X = 18;
-  const M_Y = (H - M_SIZE) / 2;
+  // SVG canvas sized tight to the (orb + gap + wordmark) group so that
+  // the parent flex column (alignItems:'center') horizontally centers
+  // the visual content, not a sparse 320×100 box. textLength below
+  // forces "ikayla" to a known width, so the math stays predictable
+  // across browsers.
+  const WORD_GAP = 6;
+  const WORD_TEXT_LENGTH = 140;
+  const W = M_SIZE + WORD_GAP + WORD_TEXT_LENGTH + 14; // 14px symmetric pad
+  const H = 72;
+  const M_X = 7;
+  const M_Y = 4;
 
   // Match renderOrbIcon's proportions (and therefore the bottom-nav
   // orb): outer gold ring, navy band, inner gold body.
@@ -158,10 +165,12 @@ function LivingSignature() {
   const MIDDLE_RX = Math.max(0, OUTER_RX - RING_W);
   const INNER_RX = Math.max(0, MIDDLE_RX - BAND_W);
 
-  const WORD_X = M_X + M_SIZE + 12;
-  // Matches the home-screen brand cluster: cap-top of "ikayla" aligns
-  // with the M's cap-top inside the gold square.
-  const WORD_Y = M_Y + Math.round(M_SIZE * 0.74);
+  const WORD_X = M_X + M_SIZE + WORD_GAP;
+  // Optical centering: align the x-height middle of lowercase "ikayla"
+  // with the cap-height middle of the bold "M" inside the orb. For a
+  // 64px orb with the M at ~36px font, that lands the wordmark
+  // baseline near M_Y + 0.625 × M_SIZE.
+  const WORD_Y = M_Y + Math.round(M_SIZE * 0.625);
   const WORD_FONT = 50;
 
   const heights = [3, 6, 9, 5, 8, 4];
@@ -301,6 +310,8 @@ function LivingSignature() {
           fontSize={WORD_FONT}
           fontWeight={800}
           letterSpacing="0.6"
+          textLength={WORD_TEXT_LENGTH}
+          lengthAdjust="spacingAndGlyphs"
           fill={tokens.gold}
         >
           ikayla
