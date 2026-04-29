@@ -126,35 +126,50 @@ export function ColdBoot({ ready, onDone }: Props) {
 }
 
 /**
- * Mikayla mark + "ikayla" wordmark as one SVG. The flag-wave filter is
- * the same minimal feTurbulence/feDisplacementMap pair used by the
- * home-screen MMark, so the cold boot reads as the same brand mark
- * the user sees throughout the app — just larger.
+ * Mikayla mark + "ikayla" wordmark as one SVG. The orb mirrors the
+ * bottom-nav M Orb's exact layered structure (outer gold ring → navy
+ * band → gold body with bold M and waveform strip), so the splash →
+ * dashboard handoff lands on the same asset the user sees throughout
+ * the app — just larger. The flag-wave filter is the same minimal
+ * feTurbulence/feDisplacementMap pair used by MMark.
  */
 function LivingSignature() {
+  // Outer footprint of the orb. Sized to read at the dashboard scale
+  // before the exit-zoom kicks in.
   const M_SIZE = 64;
-  const STRIP = Math.max(5, Math.round(M_SIZE * 0.24));
-  const M_TEXT_Y = Math.round((M_SIZE - STRIP) * 0.78);
   const W = 320;
   const H = 100;
   const M_X = 18;
   const M_Y = (H - M_SIZE) / 2;
-  const WORD_X = M_X + M_SIZE + 8;
-  // Matches the home-screen brand cluster: cap-top of "ikayla" aligns
-  // with the M's cap-top inside the gold square (the same flex-start +
-  // marginTop:4 trick the TopStrip uses, just expressed via baseline
-  // here since the wordmark is rendered as SVG <text>).
-  const WORD_Y = M_Y + Math.round(M_SIZE * 0.74);
-  const M_FONT = Math.round(M_SIZE * 0.62);
-  const WORD_FONT = 50;
-  const RX = Math.round(M_SIZE * 0.22);
 
-  const heights = [3, 5, 7, 4, 6, 3];
-  const barW = 1.6;
-  const gap = 1.6;
+  // Match renderOrbIcon's proportions (and therefore the bottom-nav
+  // orb): outer gold ring, navy band, inner gold body.
+  const RING_W = Math.max(2, Math.round(M_SIZE * 0.032));
+  const BAND_W = Math.max(4, Math.round(M_SIZE * 0.058));
+  const INNER_SIZE = M_SIZE - 2 * RING_W - 2 * BAND_W;
+  const INNER_X = M_X + RING_W + BAND_W;
+  const INNER_Y = M_Y + RING_W + BAND_W;
+  const STRIP = Math.round(INNER_SIZE * 0.25);
+  const M_AREA = INNER_SIZE - STRIP;
+  const M_FONT = Math.round(M_AREA * 0.92);
+  const M_TEXT_Y = INNER_Y + Math.round(M_AREA * 0.86);
+
+  const OUTER_RX = Math.round(M_SIZE * 0.26);
+  const MIDDLE_RX = Math.max(0, OUTER_RX - RING_W);
+  const INNER_RX = Math.max(0, MIDDLE_RX - BAND_W);
+
+  const WORD_X = M_X + M_SIZE + 12;
+  // Matches the home-screen brand cluster: cap-top of "ikayla" aligns
+  // with the M's cap-top inside the gold square.
+  const WORD_Y = M_Y + Math.round(M_SIZE * 0.74);
+  const WORD_FONT = 50;
+
+  const heights = [3, 6, 9, 5, 8, 4];
+  const barW = Math.max(1.4, INNER_SIZE * 0.03);
+  const gap = Math.max(1.4, INNER_SIZE * 0.027);
   const totalW = heights.length * barW + (heights.length - 1) * gap;
-  const stripStartX = M_X + (M_SIZE - totalW) / 2;
-  const stripBaseY = M_Y + M_SIZE - 1;
+  const stripStartX = INNER_X + (INNER_SIZE - totalW) / 2;
+  const stripBaseY = INNER_Y + INNER_SIZE - Math.round(STRIP / 2);
 
   return (
     <svg
@@ -214,17 +229,37 @@ function LivingSignature() {
       </defs>
 
       <g filter="url(#cb-wave)">
+        {/* Outer gold ring */}
         <rect
           x={M_X}
           y={M_Y}
           width={M_SIZE}
           height={M_SIZE}
-          rx={RX}
+          rx={OUTER_RX}
           fill={tokens.gold}
         />
+        {/* Navy band */}
+        <rect
+          x={M_X + RING_W}
+          y={M_Y + RING_W}
+          width={M_SIZE - 2 * RING_W}
+          height={M_SIZE - 2 * RING_W}
+          rx={MIDDLE_RX}
+          fill={tokens.bg}
+        />
+        {/* Inner gold body */}
+        <rect
+          x={INNER_X}
+          y={INNER_Y}
+          width={INNER_SIZE}
+          height={INNER_SIZE}
+          rx={INNER_RX}
+          fill={tokens.gold}
+        />
+        {/* Bold M on the gold body */}
         <text
-          x={M_X + M_SIZE / 2}
-          y={M_Y + M_TEXT_Y}
+          x={INNER_X + INNER_SIZE / 2}
+          y={M_TEXT_Y}
           textAnchor="middle"
           fontFamily="'Helvetica Neue', sans-serif"
           fontSize={M_FONT}
@@ -233,17 +268,19 @@ function LivingSignature() {
         >
           M
         </text>
+        {/* Waveform strip — clipped to the inner body's bottom corners
+            via overlapping rect on top of the gold inner. */}
         <rect
-          x={M_X}
-          y={M_Y + M_SIZE - STRIP}
-          width={M_SIZE}
+          x={INNER_X}
+          y={INNER_Y + M_AREA}
+          width={INNER_SIZE}
           height={STRIP}
           fill={tokens.bg}
         />
         {heights.map((h, i) => {
           const scaledH = Math.max(2, Math.round((h / 9) * (STRIP - 2)));
           const x = stripStartX + i * (barW + gap);
-          const y = stripBaseY - scaledH;
+          const y = stripBaseY - scaledH / 2;
           return (
             <rect
               key={i}
@@ -256,28 +293,6 @@ function LivingSignature() {
             />
           );
         })}
-        {/* Inset black hairline — 1px inside the gold edge for visible
-            depth. Reads as a recessed bevel on a metal plaque. */}
-        <rect
-          x={M_X + 1}
-          y={M_Y + 1}
-          width={M_SIZE - 2}
-          height={M_SIZE - 2}
-          rx={Math.max(0, RX - 1)}
-          fill="none"
-          stroke="rgba(0,0,0,0.55)"
-          strokeWidth="0.6"
-        />
-        <rect
-          x={M_X}
-          y={M_Y}
-          width={M_SIZE}
-          height={M_SIZE}
-          rx={RX}
-          fill="none"
-          stroke={tokens.gold}
-          strokeWidth="0.5"
-        />
 
         <text
           x={WORD_X}
