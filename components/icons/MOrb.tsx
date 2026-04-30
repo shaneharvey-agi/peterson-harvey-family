@@ -10,12 +10,13 @@ import { sendMessage } from '@/lib/mutations/chatMessages';
 import { addTask } from '@/lib/mutations/tasks';
 import { sendRequest } from '@/lib/mutations/requests';
 import { saveMemory } from '@/lib/mutations/memories';
+import { M_MONOGRAM_PATH } from './MMonogram';
 
-const ORB_GLYPH_SIZE = 22;
-const ORB_GLYPH_X = (32 - ORB_GLYPH_SIZE) / 2;
-// Slight lift centers the symmetric M in the visible cap area above the
-// 14px waveform strip rather than in the raw 36-unit viewBox.
-const ORB_GLYPH_Y = (36 - ORB_GLYPH_SIZE) / 2 - 2;
+// Architectural M sized + offset for the 56px orb. Matches the previous
+// font M's cap-height (~18px) but lives on the path, not Helvetica.
+const ORB_GLYPH_SIZE = 22; // 22 path units → ~20px visible glyph
+const ORB_GLYPH_X = (32 - ORB_GLYPH_SIZE) / 2 + 0.6; // optical right-nudge
+const ORB_GLYPH_Y = (36 - ORB_GLYPH_SIZE) / 2 - 1.5; // optical lift
 
 const HOLD_MS = 260;
 const WAVE_CYCLE_MS = 4000;
@@ -447,20 +448,20 @@ export function MOrb() {
             zIndex: 1,
           } as React.CSSProperties}
         >
+          {/* Architectural M monogram (path-based, never a text font) so
+              the same glyph reads identically across MMark, MOrb, splash,
+              and PWA icon. The flag-wave filter applies via feTurbulence
+              displacement on the path, tuned slow + gentle for "heavy silk
+              in a light breeze." Optical X/Y offsets compensate for the
+              waveform strip's left-of-center visual mass. */}
           <svg
             width={32}
             height={36}
             viewBox="0 0 32 36"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
             aria-hidden="true"
             style={{ marginTop: 4, display: 'block', overflow: 'visible' }}
           >
             <defs>
-              <linearGradient id="goldGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#D4AF37" />
-                <stop offset="100%" stopColor="#B8860B" />
-              </linearGradient>
               {holding && (
                 <filter
                   id="morb-flag-wave"
@@ -512,14 +513,7 @@ export function MOrb() {
               transform={`translate(${ORB_GLYPH_X}, ${ORB_GLYPH_Y}) scale(${ORB_GLYPH_SIZE / 100})`}
               filter={holding ? 'url(#morb-flag-wave)' : undefined}
             >
-              <path
-                d="M15 85 V25 L50 78 L85 25 V85"
-                stroke="url(#goldGradient)"
-                strokeWidth={8}
-                strokeLinecap="butt"
-                strokeLinejoin="miter"
-                strokeMiterlimit={10}
-              />
+              <path d={M_MONOGRAM_PATH} fill="#000" />
             </g>
           </svg>
 
