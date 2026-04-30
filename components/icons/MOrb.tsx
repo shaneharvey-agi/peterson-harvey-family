@@ -17,6 +17,12 @@ const ORB_GLYPH_SIZE = 22; // 22 path units → ~20px visible glyph
 const ORB_GLYPH_X = (32 - ORB_GLYPH_SIZE) / 2 + 0.6; // optical right-nudge
 const ORB_GLYPH_Y = (36 - ORB_GLYPH_SIZE) / 2 - 1.5; // optical lift
 
+// Inlined architectural M monogram path (100x100 viewBox). Vertical outer
+// stems x=4..34 and 66..96, top edge y=4, bottom y=100, outer V apex
+// (50,50), inner V apex (50,78). Lifted from the deleted MMonogram source.
+const M_MONOGRAM_PATH =
+  'M 4 100 L 4 4 L 34 4 L 50 50 L 66 4 L 96 4 L 96 100 L 66 100 L 66 32 L 50 78 L 34 32 L 34 100 Z';
+
 const HOLD_MS = 260;
 const WAVE_CYCLE_MS = 4000;
 const MIN_TRANSCRIPT_CHARS = 2; // ignore stray throat-clears
@@ -511,8 +517,9 @@ export function MOrb() {
             <g
               transform={`translate(${ORB_GLYPH_X}, ${ORB_GLYPH_Y}) scale(${ORB_GLYPH_SIZE / 100})`}
               filter={holding ? 'url(#morb-flag-wave)' : undefined}
-            />
-
+            >
+              <path d={M_MONOGRAM_PATH} fill="#000000" />
+            </g>
           </svg>
 
           {/* Bottom strip — cross-fades from waveform bars (idle, the
