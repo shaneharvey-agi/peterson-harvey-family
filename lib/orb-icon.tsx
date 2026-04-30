@@ -24,10 +24,6 @@
 //   radius       16   / 56 = 28.6%   soft squircle
 
 import * as React from 'react';
-import {
-  M_MONOGRAM_PATH,
-  M_MONOGRAM_VIEWBOX,
-} from '@/components/icons/MMonogram';
 
 const BAR_HEIGHT_RATIOS = [3, 6, 9, 5, 8, 4].map((h) => h / 56);
 
@@ -142,18 +138,8 @@ export function renderOrbIcon(size: number): React.ReactElement {
               alignItems: 'center',
               justifyContent: 'center',
             }}
-          >
-            <svg
-              width={glyphSize}
-              height={glyphSize}
-              viewBox={M_MONOGRAM_VIEWBOX}
-              style={{
-                transform: `translate(${opticalDX}px, ${opticalDY}px)`,
-              }}
-            >
-              <path d={M_MONOGRAM_PATH} fill="#000000" />
-            </svg>
-          </div>
+          />
+
           <div
             style={{
               width: '100%',

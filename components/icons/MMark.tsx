@@ -1,7 +1,6 @@
 'use client';
 
 import { tokens } from '@/lib/design-tokens';
-import { M_MONOGRAM_PATH } from './MMonogram';
 
 interface Props {
   /** Outer height in px. Width = height * (32/34). Default 32. */
@@ -129,9 +128,8 @@ export function MMark({ size = 32, waving = false, marginTop = 0 }: Props) {
         <g
           transform={`translate(${glyphX}, ${glyphY}) scale(${glyphSize / 100})`}
           filter={waving ? `url(#${filterId})` : undefined}
-        >
-          <path d={M_MONOGRAM_PATH} fill="#000" />
-        </g>
+        />
+
       </svg>
 
       {/* Waveform strip — same gold-on-navy treatment as the bottom MOrb. */}

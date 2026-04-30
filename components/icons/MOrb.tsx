@@ -10,7 +10,6 @@ import { sendMessage } from '@/lib/mutations/chatMessages';
 import { addTask } from '@/lib/mutations/tasks';
 import { sendRequest } from '@/lib/mutations/requests';
 import { saveMemory } from '@/lib/mutations/memories';
-import { M_MONOGRAM_PATH } from './MMonogram';
 
 // Architectural M sized + offset for the 56px orb. Matches the previous
 // font M's cap-height (~18px) but lives on the path, not Helvetica.
@@ -512,9 +511,8 @@ export function MOrb() {
             <g
               transform={`translate(${ORB_GLYPH_X}, ${ORB_GLYPH_Y}) scale(${ORB_GLYPH_SIZE / 100})`}
               filter={holding ? 'url(#morb-flag-wave)' : undefined}
-            >
-              <path d={M_MONOGRAM_PATH} fill="#000" />
-            </g>
+            />
+
           </svg>
 
           {/* Bottom strip — cross-fades from waveform bars (idle, the
